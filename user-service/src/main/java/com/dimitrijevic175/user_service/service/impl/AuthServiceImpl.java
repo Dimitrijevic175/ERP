@@ -36,7 +36,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Kreiraj claims za token
         Claims claims = Jwts.claims();
-        claims.put("id", user.getId());
+        claims.setSubject(String.valueOf(user.getId()));
         claims.put("email", user.getEmail());
         claims.put("role", user.getRole().getName().name());
         claims.put("firstName", user.getFirstName());
@@ -51,7 +51,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getRole().getName().name()
+                user.getRole().getName().name(),
+                user.getId()
         );
     }
 
