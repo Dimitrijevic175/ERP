@@ -2,6 +2,8 @@ package com.dimitrijevic175.product_service.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -43,7 +45,10 @@ public class Product {
 
     private Boolean active = true;
 
+    @CreationTimestamp
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @UpdateTimestamp
     private LocalDateTime updatedAt = LocalDateTime.now();
 
 
