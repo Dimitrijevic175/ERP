@@ -58,6 +58,17 @@ public class GlobalExceptionHandler {
                 )
         );
     }
+    @ExceptionHandler(NotEnoughStockException.class)
+    public ResponseEntity<?> handleNotEnoughStock(NotEnoughStockException ex){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                Map.of(
+                        "timestamp",LocalDateTime.now(),
+                        "status",403,
+                        "error","Forbidden",
+                        "message", ex.getMessage()
 
+                )
+        );
+    }
 
 }

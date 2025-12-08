@@ -1,20 +1,30 @@
 package com.dimitrijevic175.product_service.service.impl;
 
+import com.dimitrijevic175.product_service.configuration.ExcelUtils;
+import com.dimitrijevic175.product_service.configuration.ProductExcelMapper;
 import com.dimitrijevic175.product_service.configuration.ProductSpecification;
 import com.dimitrijevic175.product_service.domain.Category;
 import com.dimitrijevic175.product_service.domain.Product;
 import com.dimitrijevic175.product_service.dto.*;
 import com.dimitrijevic175.product_service.exceptions.CategoryNotFoundException;
+import com.dimitrijevic175.product_service.exceptions.NotEnoughStockException;
 import com.dimitrijevic175.product_service.exceptions.ProductNotFoundException;
 import com.dimitrijevic175.product_service.exceptions.SkuNotFoundException;
 import com.dimitrijevic175.product_service.mapper.ProductMapper;
 import com.dimitrijevic175.product_service.repository.*;
 import com.dimitrijevic175.product_service.service.ProductService;
 import jakarta.transaction.Transactional;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -118,4 +128,142 @@ public class ProductServiceImpl implements ProductService {
 
         return page.map(ProductMapper::toResponse);
     }
+
+    @Override
+    public Page<ProductResponse> getLowStockProducts(Pageable pageable) {
+        Page<Product> page = productRepository.findLowStockProducts(pageable);
+        return page.map(ProductMapper::toResponse);
+    }
+    @Override
+    public ProductResponse increaseStock(Long id, Integer amount) {
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+
+        product.setQuantity(product.getQuantity() + amount);
+
+        Product saved = productRepository.save(product);
+        return ProductMapper.toResponse(saved);
+    }
+    @Override
+    public ProductResponse decreaseStock(Long id, Integer amount) {
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+
+        if (product.getQuantity() - amount < 0) {
+            throw new NotEnoughStockException();
+        }
+
+        product.setQuantity(product.getQuantity() - amount);
+
+        Product saved = productRepository.save(product);
+        return ProductMapper.toResponse(saved);
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    @Override
+    public ImportResult importProducts(MultipartFile file) {
+
+        ImportResult.ImportResultBuilder resultBuilder = ImportResult.builder()
+                .totalRows(0)
+                .successfulImports(0)
+                .failedImports(0)
+                .errors(new ArrayList<>());
+
+        if (file.isEmpty()) {
+            resultBuilder.errors(List.of("File is empty"));
+            return resultBuilder.build();
+        }
+
+        ExcelUtils excel = ExcelUtils.getInstance();
+        ProductExcelMapper mapper = ProductExcelMapper.getInstance();
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            int totalRows = sheet.getPhysicalNumberOfRows() - 1; // bez headera
+            resultBuilder.totalRows(totalRows);
+
+            // -------------------------------------------
+            // 1) Pokupimo sve SKU vrednosti iz Excel-a
+            // -------------------------------------------
+            List<String> skus = new ArrayList<>();
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String sku = excel.getCellString(row.getCell(1));
+                if (sku != null) {
+                    skus.add(sku);
+                }
+            }
+
+            // -------------------------------------------
+            // 2) Učitaj postojeće proizvode batch-om
+            // -------------------------------------------
+            List<Product> existing = productRepository.findAllBySkuIn(skus);
+
+            Map<String, Product> existingMap = existing.stream()
+                    .collect(Collectors.toMap(Product::getSku, p -> p));
+
+            List<Product> productsToSave = new ArrayList<>();
+
+            // -------------------------------------------
+            // 3) Glavna petlja – kreiranje ili update
+            // -------------------------------------------
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                try {
+                    String sku = excel.getCellString(row.getCell(1));
+
+                    if (sku == null || sku.isBlank()) {
+                        throw new IllegalArgumentException("SKU is required");
+                    }
+
+                    Product product;
+
+                    if (existingMap.containsKey(sku)) {
+                        // UPDATE
+                        product = existingMap.get(sku);
+                        mapper.updateProductFromRow(product, row, categoryRepository);
+
+                    } else {
+                        // NEW PRODUCT
+                        product = mapper.mapRowToProduct(row, categoryRepository);
+                    }
+
+                    productsToSave.add(product);
+
+                    // increment success count
+                    resultBuilder.successfulImports(resultBuilder.build().getSuccessfulImports() + 1);
+
+                } catch (Exception e) {
+
+                    int failed = resultBuilder.build().getFailedImports() + 1;
+                    resultBuilder.failedImports(failed);
+
+                    List<String> errors = new ArrayList<>(resultBuilder.build().getErrors());
+                    errors.add("Row " + (i + 1) + ": " + e.getMessage());
+                    resultBuilder.errors(errors);
+                }
+            }
+
+            // -------------------------------------------
+            // 4) batch save
+            // -------------------------------------------
+            productRepository.saveAll(productsToSave);
+
+        } catch (Exception e) {
+            resultBuilder.errors(
+                    List.of("Failed to read Excel file: " + e.getMessage())
+            );
+        }
+
+        return resultBuilder.build();
+    }
+
 }
