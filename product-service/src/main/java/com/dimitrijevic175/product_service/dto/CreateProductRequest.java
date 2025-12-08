@@ -35,7 +35,12 @@ public class CreateProductRequest {
     @Min(value = 0, message = "Quantity cannot be negative.")
     private Integer quantity;
 
+    @NotNull(message = "Minimum Quantity is required.")
+    @Min(value = 0, message = "Minimum quantity must be non-negative")
     private Integer minQuantity;
+
+    @NotNull(message = "Maximum Quantity is required.")
+    @Min(value = 0, message = "Maximum quantity must be non-negative")
     private Integer maxQuantity;
 
     @NotBlank(message = "Unit of measure is required.")
