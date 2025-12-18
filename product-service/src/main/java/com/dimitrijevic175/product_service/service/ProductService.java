@@ -10,10 +10,6 @@ public interface ProductService {
     ProductResponse getProductById(Long id);
     ProductResponse updateProduct(Long id, ProductUpdateRequest request);
     ProductResponse updateProductStatus(Long id, Boolean active);
-    ProductStockResponse getProductStock(Long id);
     Page<ProductResponse> getProducts(ProductSearchRequest request, Pageable pageable);
-    Page<ProductResponse> getLowStockProducts(Pageable pageable);
-    ProductResponse increaseStock(Long id, Integer amount);
-    ProductResponse decreaseStock(Long id, Integer amount);
     ImportResult importProducts(MultipartFile file);
 }

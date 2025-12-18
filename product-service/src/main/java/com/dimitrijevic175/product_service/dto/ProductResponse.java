@@ -18,7 +18,6 @@ public class ProductResponse {
     private BigDecimal purchasePrice;
     private BigDecimal sellingPrice;
     private BigDecimal taxRate;
-    private Integer quantity;
     private Integer minQuantity;
     private Integer maxQuantity;
     private String unitOfMeasure;

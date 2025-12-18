@@ -29,7 +29,6 @@ public class ProductExcelMapper {
         product.setName(excel.getCellString(row.getCell(0)));
         product.setSku(excel.getCellString(row.getCell(1)));
         product.setDescription(excel.getCellString(row.getCell(2)));
-        product.setQuantity(excel.getCellInteger(row.getCell(3)));
         product.setMinQuantity(excel.getCellInteger(row.getCell(4)));
         product.setMaxQuantity(excel.getCellInteger(row.getCell(5)));
         product.setBrand(excel.getCellString(row.getCell(6)));
@@ -54,8 +53,8 @@ public class ProductExcelMapper {
             product.setActive(true);
         }
 
-        if (product.getName() == null || product.getSku() == null || product.getQuantity() == null) {
-            throw new IllegalArgumentException("Required fields missing (name, sku, quantity)");
+        if (product.getName() == null || product.getSku() == null) {
+            throw new IllegalArgumentException("Required fields missing (name, sku)");
         }
     }
 }
