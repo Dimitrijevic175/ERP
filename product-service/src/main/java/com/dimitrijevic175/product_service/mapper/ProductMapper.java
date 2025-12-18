@@ -18,7 +18,6 @@ public class ProductMapper {
                 .purchasePrice(product.getPurchasePrice())
                 .sellingPrice(product.getSellingPrice())
                 .taxRate(product.getTaxRate())
-                .quantity(product.getQuantity())
                 .minQuantity(product.getMinQuantity())
                 .maxQuantity(product.getMaxQuantity())
                 .unitOfMeasure(product.getUnitOfMeasure())
@@ -35,7 +34,6 @@ public class ProductMapper {
         if (request.getPurchasePrice() != null) product.setPurchasePrice(request.getPurchasePrice());
         if (request.getSellingPrice() != null) product.setSellingPrice(request.getSellingPrice());
         if (request.getTaxRate() != null) product.setTaxRate(request.getTaxRate());
-        if (request.getQuantity() != null) product.setQuantity(request.getQuantity());
         if (request.getMinQuantity() != null) product.setMinQuantity(request.getMinQuantity());
         if (request.getMaxQuantity() != null) product.setMaxQuantity(request.getMaxQuantity());
         if (request.getUnitOfMeasure() != null) product.setUnitOfMeasure(request.getUnitOfMeasure());

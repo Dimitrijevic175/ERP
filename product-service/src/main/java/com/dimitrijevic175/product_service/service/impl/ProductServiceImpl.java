@@ -57,7 +57,6 @@ public class ProductServiceImpl implements ProductService {
         product.setPurchasePrice(request.getPurchasePrice());
         product.setSellingPrice(request.getSellingPrice());
         product.setTaxRate(request.getTaxRate());
-        product.setQuantity(request.getQuantity());
         product.setMinQuantity(request.getMinQuantity());
         product.setMaxQuantity(request.getMaxQuantity());
         product.setUnitOfMeasure(request.getUnitOfMeasure());
@@ -104,13 +103,6 @@ public class ProductServiceImpl implements ProductService {
         return ProductMapper.toResponse(productRepository.save(product));
     }
 
-    @Override
-    public ProductStockResponse getProductStock(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
-
-        return new ProductStockResponse(product.getId(), product.getQuantity());
-    }
 
     @Override
     public Page<ProductResponse> getProducts(ProductSearchRequest request, Pageable pageable) {
@@ -128,39 +120,6 @@ public class ProductServiceImpl implements ProductService {
 
         return page.map(ProductMapper::toResponse);
     }
-
-    @Override
-    public Page<ProductResponse> getLowStockProducts(Pageable pageable) {
-        Page<Product> page = productRepository.findLowStockProducts(pageable);
-        return page.map(ProductMapper::toResponse);
-    }
-    @Override
-    public ProductResponse increaseStock(Long id, Integer amount) {
-
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
-
-        product.setQuantity(product.getQuantity() + amount);
-
-        Product saved = productRepository.save(product);
-        return ProductMapper.toResponse(saved);
-    }
-    @Override
-    public ProductResponse decreaseStock(Long id, Integer amount) {
-
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ProductNotFoundException(id));
-
-        if (product.getQuantity() - amount < 0) {
-            throw new NotEnoughStockException();
-        }
-
-        product.setQuantity(product.getQuantity() - amount);
-
-        Product saved = productRepository.save(product);
-        return ProductMapper.toResponse(saved);
-    }
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     public ImportResult importProducts(MultipartFile file) {
@@ -182,12 +141,9 @@ public class ProductServiceImpl implements ProductService {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
 
             Sheet sheet = workbook.getSheetAt(0);
-            int totalRows = sheet.getPhysicalNumberOfRows() - 1; // bez headera
+            int totalRows = sheet.getPhysicalNumberOfRows() - 1;
             resultBuilder.totalRows(totalRows);
 
-            // -------------------------------------------
-            // 1) Pokupimo sve SKU vrednosti iz Excel-a
-            // -------------------------------------------
             List<String> skus = new ArrayList<>();
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
@@ -200,9 +156,6 @@ public class ProductServiceImpl implements ProductService {
                 }
             }
 
-            // -------------------------------------------
-            // 2) Učitaj postojeće proizvode batch-om
-            // -------------------------------------------
             List<Product> existing = productRepository.findAllBySkuIn(skus);
 
             Map<String, Product> existingMap = existing.stream()
@@ -210,9 +163,6 @@ public class ProductServiceImpl implements ProductService {
 
             List<Product> productsToSave = new ArrayList<>();
 
-            // -------------------------------------------
-            // 3) Glavna petlja – kreiranje ili update
-            // -------------------------------------------
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
@@ -252,9 +202,6 @@ public class ProductServiceImpl implements ProductService {
                 }
             }
 
-            // -------------------------------------------
-            // 4) batch save
-            // -------------------------------------------
             productRepository.saveAll(productsToSave);
 
         } catch (Exception e) {

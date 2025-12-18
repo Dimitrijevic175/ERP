@@ -35,8 +35,6 @@ public class Product {
 
     private BigDecimal taxRate;
 
-    private Integer quantity;
-
     private Integer minQuantity;
 
     private Integer maxQuantity;

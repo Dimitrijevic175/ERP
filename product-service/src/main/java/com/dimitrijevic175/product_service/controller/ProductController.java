@@ -45,10 +45,6 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProductStatus(id, request.getActive()));
     }
 
-    @GetMapping("/{id}/stock")
-    public ResponseEntity<ProductStockResponse> getProductStock(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductStock(id));
-    }
 
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> getProducts(
@@ -73,23 +69,6 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProducts(req, pageable));
     }
 
-    @GetMapping("/low-stock")
-    public ResponseEntity<Page<ProductResponse>> getLowStockProducts(Pageable pageable) {
-        Page<ProductResponse> products = productService.getLowStockProducts(pageable);
-        return ResponseEntity.ok(products);
-    }
-
-    @PostMapping("/{id}/increase-stock")
-    public ResponseEntity<ProductResponse> increaseStock(@PathVariable Long id, @Valid @RequestBody IncreaseStockRequest request) {
-        ProductResponse response = productService.increaseStock(id, request.getAmount());
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/{id}/decrease-stock")
-    public ResponseEntity<ProductResponse> decreaseStock(@PathVariable Long id, @Valid @RequestBody DecreaseStockRequest request) {
-        ProductResponse response = productService.decreaseStock(id, request.getAmount());
-        return ResponseEntity.ok(response);
-    }
     @PostMapping("/import")
     public ResponseEntity<ImportResult> importProducts(@RequestParam("file") MultipartFile file) {
         ImportResult result = productService.importProducts(file);
