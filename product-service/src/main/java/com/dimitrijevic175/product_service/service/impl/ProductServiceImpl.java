@@ -38,6 +38,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public Integer getMinQuantity(Long productId) {
+        return productRepository.findById(productId)
+                .map(Product::getMinQuantity)
+                .orElse(null);
+    }
+
+    @Override
     @Transactional
     public ProductResponse createProduct(CreateProductRequest request) {
 
