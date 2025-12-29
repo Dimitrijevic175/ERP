@@ -9,7 +9,6 @@ public interface WarehouseService {
 
     // Low stock za jedan magacin
     List<LowStockItemDto> getLowStockByWarehouse(Long warehouseId);
-
     // Low stock za sve magacine (sumirano po proizvodu)
     // Low stock globalno (sumirano po proizvodu)
     List<LowStockItemDto> getLowStockGlobal();

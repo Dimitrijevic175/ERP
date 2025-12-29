@@ -20,7 +20,6 @@ public class DataRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-
         // =========================
         // WAREHOUSE
         // =========================

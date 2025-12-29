@@ -27,5 +27,4 @@ public class WarehouseController {
         return ResponseEntity.ok(warehouseService.getLowStockGlobal());
     }
 
-
 }

@@ -85,7 +85,6 @@ public class WarehouseServiceImpl implements WarehouseService {
                 result.add(dto);
             }
         }
-
         return result;
     }
 

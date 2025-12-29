@@ -74,7 +74,6 @@
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
-
 		<!-- Spring WebFlux za WebClient -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

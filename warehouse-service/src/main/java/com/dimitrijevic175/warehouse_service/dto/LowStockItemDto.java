@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class LowStockItemDto {
-
     private Long warehouseStockId;
     private Long productId;
     private Integer quantity;
