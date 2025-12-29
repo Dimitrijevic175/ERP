@@ -12,4 +12,5 @@ public interface ProductService {
     ProductResponse updateProductStatus(Long id, Boolean active);
     Page<ProductResponse> getProducts(ProductSearchRequest request, Pageable pageable);
     ImportResult importProducts(MultipartFile file);
+    Integer getMinQuantity(Long productId);
 }

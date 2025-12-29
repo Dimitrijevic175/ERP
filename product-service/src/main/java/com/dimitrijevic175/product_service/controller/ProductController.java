@@ -27,6 +27,16 @@ public class ProductController {
         return ResponseEntity.ok(productService.createProduct(request));
     }
 
+    @GetMapping("/{id}/minQuantity")
+    public ResponseEntity<Integer> getProductMinQuantity(@PathVariable Long id) {
+        Integer minQuantity = productService.getMinQuantity(id);
+        if (minQuantity == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(minQuantity);
+    }
+
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
         ProductResponse response = productService.getProductById(id);
