@@ -2,6 +2,7 @@ package com.dimitrijevic175.warehouse_service.controller;
 
 import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
 import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
+import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
 import com.dimitrijevic175.warehouse_service.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,4 +28,8 @@ public class WarehouseController {
         return ResponseEntity.ok(warehouseService.getLowStockGlobal());
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<WarehouseDto> getWarehouse(@PathVariable Long id) {
+        return ResponseEntity.ok(warehouseService.getWarehouseById(id));
+    }
 }

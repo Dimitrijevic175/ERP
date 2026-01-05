@@ -19,4 +19,11 @@ public class WebClientConfig {
                 .baseUrl("http://localhost:8081/product") // URL Product service
                 .build();
     }
+
+    @Bean
+    public WebClient notificationWebClient() {
+        return WebClient.builder()
+                .baseUrl("http://localhost:8087/api") // URL Product service
+                .build();
+    }
 }
