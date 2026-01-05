@@ -3,6 +3,7 @@ package com.dimitrijevic175.warehouse_service.service.impl;
 import com.dimitrijevic175.warehouse_service.domain.Warehouse;
 import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
 import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
+import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseRepository;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseStockRepository;
 import com.dimitrijevic175.warehouse_service.service.WarehouseService;
@@ -112,4 +113,22 @@ public class WarehouseServiceImpl implements WarehouseService {
             return null;
         }
     }
+
+    @Override
+    public WarehouseDto getWarehouseById(Long warehouseId) {
+        Optional<Warehouse> warehouseOpt = warehouseRepository.findById(warehouseId);
+
+        if (warehouseOpt.isEmpty()) {
+            throw new RuntimeException("Warehouse not found with id: " + warehouseId);
+        }
+
+        Warehouse w = warehouseOpt.get();
+        WarehouseDto dto = new WarehouseDto();
+        dto.setId(w.getId());
+        dto.setName(w.getName());
+        dto.setLocation(w.getLocation());
+
+        return dto;
+    }
+
 }

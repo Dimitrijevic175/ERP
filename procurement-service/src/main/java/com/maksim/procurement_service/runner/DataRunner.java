@@ -30,7 +30,7 @@ public class DataRunner {
 
         SupplierContact contact1 = new SupplierContact();
         contact1.setFullName("Marko Marković");
-        contact1.setEmail("marko@abc.rs");
+        contact1.setEmail("markomarkovic@abc.rs");
         contact1.setPhone("+381641234567");
         contact1.setSupplier(supplier1);
 
