@@ -17,6 +17,14 @@ public class PurchaseOrderController {
     private final PurchaseOrderService purchaseOrderService;
     private final PurchaseOrderRepository purchaseOrderRepository;
 
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PurchaseOrderDto> getPurchaseOrderById(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                purchaseOrderService.getPurchaseOrderById(id)
+        );
+    }
+
     @PostMapping
     public ResponseEntity<PurchaseOrderResponseDto> createAutoPurchaseOrder(
             @RequestBody CreatePurchaseOrderRequestDto request
@@ -51,7 +59,7 @@ public class PurchaseOrderController {
         PurchaseOrder po = purchaseOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
 
-        if (po.getStatus() != PurchaseOrderStatus.SUBMITTED) {
+        if (po.getStatus() != PurchaseOrderStatus.SUBMITTED && po.getStatus()!= PurchaseOrderStatus.RECEIVED) {
             return ResponseEntity.badRequest().body("Purchase order cannot be closed");
         }
 
