@@ -322,4 +322,26 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         purchaseOrderRepository.save(po);
     }
 
+    @Override
+    public PurchaseOrderDto getPurchaseOrderById(Long id) {
+        PurchaseOrder po = purchaseOrderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
+
+        PurchaseOrderDto dto = new PurchaseOrderDto();
+        dto.setId(po.getId());
+
+        dto.setItems(
+                po.getItems().stream().map(item -> {
+                    PurchaseOrderItemDto i = new PurchaseOrderItemDto();
+                    i.setProductId(item.getProductId());
+                    i.setQuantity(item.getQuantity());
+                    i.setPurchasePrice(item.getPurchasePrice());
+                    return i;
+                }).collect(Collectors.toList())
+        );
+
+        return dto;
+    }
+
+
 }
