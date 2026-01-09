@@ -3,9 +3,10 @@ package com.dimitrijevic175.warehouse_service.mapper;
 import com.dimitrijevic175.warehouse_service.domain.ReceiptNote;
 import com.dimitrijevic175.warehouse_service.domain.ReceiptNoteItem;
 import com.dimitrijevic175.warehouse_service.dto.ReceiptNoteResponseDto;
+import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
-
+@Component
 public class ReceiptNoteMapper {
 
     private ReceiptNoteMapper() {

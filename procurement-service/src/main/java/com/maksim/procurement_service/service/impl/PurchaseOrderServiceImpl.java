@@ -3,9 +3,12 @@ package com.maksim.procurement_service.service.impl;
 import com.maksim.procurement_service.domain.*;
 import com.maksim.procurement_service.dto.*;
 import com.maksim.procurement_service.listener.NotificationSender;
+import com.maksim.procurement_service.mapper.PurchaseOrderMapper;
 import com.maksim.procurement_service.repository.*;
 import com.maksim.procurement_service.service.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,6 +30,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final WebClient warehouseWebClient;
     private final WebClient productWebClient;
     private final NotificationSender notificationSender;
+    private final PurchaseOrderMapper purchaseOrderMapper;
+
+    @Override
+    public Page<PurchaseOrderDto> getAllPurchaseOrders(Pageable pageable) {
+        return purchaseOrderRepository.findAll(pageable)
+                .map(purchaseOrderMapper::toDto);
+    }
 
     @Override
     public PurchaseOrderResponseDto createAutoPurchaseOrder(CreatePurchaseOrderRequestDto request) {

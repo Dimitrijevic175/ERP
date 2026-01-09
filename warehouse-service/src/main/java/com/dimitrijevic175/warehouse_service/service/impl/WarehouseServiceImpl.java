@@ -4,10 +4,14 @@ import com.dimitrijevic175.warehouse_service.domain.Warehouse;
 import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
 import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
 import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
+import com.dimitrijevic175.warehouse_service.dto.WarehouseUpdateRequestDto;
+import com.dimitrijevic175.warehouse_service.mapper.WarehouseMapper;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseRepository;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseStockRepository;
 import com.dimitrijevic175.warehouse_service.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -21,6 +25,35 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final WarehouseStockRepository stockRepository;
     private final WebClient productWebClient; // WebClient za sinhroni poziv Product service
     private final WarehouseRepository warehouseRepository;
+    private final WarehouseMapper warehouseMapper;
+
+
+    @Override
+    public Page<WarehouseDto> getAllWarehouses(Pageable pageable) {
+        return warehouseRepository.findAll(pageable)
+                .map(warehouseMapper::toDto);
+    }
+
+    @Override
+    public WarehouseDto updateWarehouse(Long id, WarehouseUpdateRequestDto request) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+
+        warehouseMapper.updateEntity(warehouse, request);
+
+        return warehouseMapper.toDto(
+                warehouseRepository.save(warehouse)
+        );
+    }
+
+    @Override
+    public void deleteWarehouse(Long id) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+        warehouseRepository.delete(warehouse);
+    }
+
+
     // -------------------------------
     // 1. Low stock po jednom magacinu
     // -------------------------------

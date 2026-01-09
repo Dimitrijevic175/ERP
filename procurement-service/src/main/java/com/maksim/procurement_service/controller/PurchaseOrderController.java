@@ -6,8 +6,12 @@ import com.maksim.procurement_service.dto.*;
 import com.maksim.procurement_service.repository.PurchaseOrderRepository;
 import com.maksim.procurement_service.service.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/purchase-orders")
@@ -16,6 +20,18 @@ public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
     private final PurchaseOrderRepository purchaseOrderRepository;
+
+
+    @GetMapping
+    public ResponseEntity<Page<PurchaseOrderDto>> getAllPurchaseOrders(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                purchaseOrderService.getAllPurchaseOrders(pageable)
+        );
+    }
+
 
 
     @GetMapping("/{id}")
