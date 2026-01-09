@@ -4,9 +4,11 @@ import com.maksim.procurement_service.dto.CreatePurchaseOrderRequestDto;
 import com.maksim.procurement_service.dto.PurchaseOrderDto;
 import com.maksim.procurement_service.dto.PurchaseOrderResponseDto;
 import com.maksim.procurement_service.dto.PurchaseOrderSubmitResponseDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PurchaseOrderService {
-
+    Page<PurchaseOrderDto> getAllPurchaseOrders(Pageable pageable);
     PurchaseOrderResponseDto createAutoPurchaseOrder(CreatePurchaseOrderRequestDto request);
     // Submit PO i generisanje PDF
     String submitPurchaseOrder(Long purchaseOrderId);

@@ -8,6 +8,8 @@ import com.dimitrijevic175.warehouse_service.repository.WarehouseRepository;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseStockRepository;
 import com.dimitrijevic175.warehouse_service.service.ReceiptNoteService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,6 +26,28 @@ public class ReceiptNoteServiceImpl implements ReceiptNoteService {
     private final WarehouseRepository warehouseRepository;
     private final WebClient procurementWebClient;
     private final WarehouseStockRepository warehouseStockRepository;
+    private final ReceiptNoteMapper receiptNoteMapper;
+
+
+    @Override
+    public Page<ReceiptNoteResponseDto> getAllReceiptNotes(Pageable pageable) {
+        return receiptNoteRepository.findAll(pageable)
+                .map(ReceiptNoteMapper::toDto);
+    }
+
+    @Override
+    public ReceiptNoteResponseDto getReceiptNoteById(Long id) {
+        ReceiptNote receiptNote = receiptNoteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Receipt note not found"));
+        return ReceiptNoteMapper.toDto(receiptNote);
+    }
+
+    @Override
+    public void deleteReceiptNote(Long id) {
+        ReceiptNote receiptNote = receiptNoteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Receipt note not found"));
+        receiptNoteRepository.delete(receiptNote);
+    }
 
     @Override
     public ReceiptNoteResponseDto createReceiptNoteFromPurchaseOrder(

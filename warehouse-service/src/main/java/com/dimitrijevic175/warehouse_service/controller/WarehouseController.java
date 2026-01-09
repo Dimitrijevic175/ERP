@@ -1,6 +1,10 @@
 package com.dimitrijevic175.warehouse_service.controller;
 
-import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
+import com.dimitrijevic175.warehouse_service.dto.WarehouseUpdateRequestDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
 import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
 import com.dimitrijevic175.warehouse_service.service.WarehouseService;
@@ -17,6 +21,29 @@ import java.util.List;
 public class WarehouseController {
 
     private final WarehouseService warehouseService;
+
+    @GetMapping
+    public ResponseEntity<Page<WarehouseDto>> getAllWarehouses(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                warehouseService.getAllWarehouses(pageable)
+        );
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<WarehouseDto> updateWarehouse(@PathVariable Long id, @RequestBody WarehouseUpdateRequestDto request)
+    {
+        return ResponseEntity.ok(warehouseService.updateWarehouse(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteWarehouse(@PathVariable Long id) {
+        warehouseService.deleteWarehouse(id);
+        return ResponseEntity.noContent().build();
+    }
+
 
     @GetMapping("/{id}/lowStock")
     public ResponseEntity<List<LowStockItemDto>> lowStock(@PathVariable Long id) {

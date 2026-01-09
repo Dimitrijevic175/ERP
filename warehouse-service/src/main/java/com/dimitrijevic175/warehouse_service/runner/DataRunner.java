@@ -18,6 +18,7 @@ public class DataRunner implements CommandLineRunner {
     private final ReceiptNoteRepository receiptNoteRepository;
     private final DispatchNoteRepository dispatchNoteRepository;
 
+
     @Override
     public void run(String... args) {
         // =========================
@@ -117,6 +118,29 @@ public class DataRunner implements CommandLineRunner {
         dispatchNote.setItems(List.of(dItem1, dItem2));
 
         dispatchNoteRepository.save(dispatchNote);
+
+        // =========================
+        // DISPATCH NOTE 2
+        // =========================
+        DispatchNote dispatchNote2 = new DispatchNote();
+        dispatchNote2.setSalesOrderId(202L);
+        dispatchNote2.setWarehouse(warehouse2);
+        dispatchNote2.setStatus(DispatchNoteStatus.DRAFT);
+
+        DispatchNoteItem d2Item1 = new DispatchNoteItem();
+        d2Item1.setDispatchNote(dispatchNote2);
+        d2Item1.setProductId(1L);
+        d2Item1.setDispatchedQuantity(2);
+        d2Item1.setSellingPrice(new BigDecimal("6.80"));
+
+        DispatchNoteItem d2Item2 = new DispatchNoteItem();
+        d2Item2.setDispatchNote(dispatchNote2);
+        d2Item2.setProductId(3L);
+        d2Item2.setDispatchedQuantity(3);
+        d2Item2.setSellingPrice(new BigDecimal("5.50"));
+
+        dispatchNote2.setItems(List.of(d2Item1, d2Item2));
+        dispatchNoteRepository.save(dispatchNote2);
 
         System.out.println("Warehouse initial data loaded successfully!");
     }
