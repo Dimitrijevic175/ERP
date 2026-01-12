@@ -56,7 +56,7 @@ public class DataRunner implements CommandLineRunner {
         SalesOrder salesOrder = new SalesOrder();
         salesOrder.setWarehouseId(1L);
         salesOrder.setCustomer(companyCustomer);
-        salesOrder.setStatus(SalesOrderStatus.DRAFT);
+        salesOrder.setStatus(SalesOrderStatus.CREATED);
 
         // =========================
         // SALES ORDER ITEMS
@@ -84,8 +84,7 @@ public class DataRunner implements CommandLineRunner {
         // =========================
         // STATUS PROMENA (primer)
         // =========================
-        salesOrder.setStatus(SalesOrderStatus.CONFIRMED);
-        salesOrder.setConfirmedAt(LocalDateTime.now());
+        salesOrder.setStatus(SalesOrderStatus.CREATED);
 
         salesOrderRepository.save(salesOrder);
     }

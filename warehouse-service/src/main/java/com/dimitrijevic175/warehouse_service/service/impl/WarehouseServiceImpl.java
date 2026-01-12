@@ -2,9 +2,7 @@ package com.dimitrijevic175.warehouse_service.service.impl;
 
 import com.dimitrijevic175.warehouse_service.domain.Warehouse;
 import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
-import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
-import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
-import com.dimitrijevic175.warehouse_service.dto.WarehouseUpdateRequestDto;
+import com.dimitrijevic175.warehouse_service.dto.*;
 import com.dimitrijevic175.warehouse_service.mapper.WarehouseMapper;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseRepository;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseStockRepository;
@@ -162,6 +160,33 @@ public class WarehouseServiceImpl implements WarehouseService {
         dto.setLocation(w.getLocation());
 
         return dto;
+    }
+
+    @Override
+    public CheckWarehouseAvailabilityResponseDto findWarehouseForOrder(CheckWarehouseAvailabilityRequestDto request) {
+
+        // Dohvati sve magacine
+        List<Warehouse> warehouses = warehouseRepository.findAll();
+
+        for (Warehouse warehouse : warehouses) {
+
+            boolean canFulfill = request.getItems().stream().allMatch(orderItem -> {
+                return warehouse.getStock().stream()
+                        .anyMatch(stock ->
+                                stock.getProductId().equals(orderItem.getProductId())
+                                        && stock.getQuantity() >= orderItem.getQuantity()
+                        );
+            });
+
+            if (canFulfill) {
+                CheckWarehouseAvailabilityResponseDto response = new CheckWarehouseAvailabilityResponseDto();
+                response.setWarehouseId(warehouse.getId());
+                return response;
+            }
+        }
+
+        // Ako nijedan magacin ne može da ispuni narudžbinu
+        throw new RuntimeException("No warehouse can fulfill the requested order");
     }
 
 }

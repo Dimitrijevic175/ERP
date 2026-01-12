@@ -1,9 +1,7 @@
 package com.dimitrijevic175.warehouse_service.service;
 
 import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
-import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
-import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
-import com.dimitrijevic175.warehouse_service.dto.WarehouseUpdateRequestDto;
+import com.dimitrijevic175.warehouse_service.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -22,6 +20,8 @@ public interface WarehouseService {
     Page<WarehouseDto> getAllWarehouses(Pageable pageable);
     WarehouseDto updateWarehouse(Long id, WarehouseUpdateRequestDto request);
     void deleteWarehouse(Long id);
+
+    CheckWarehouseAvailabilityResponseDto findWarehouseForOrder(CheckWarehouseAvailabilityRequestDto request);
 
 
 
