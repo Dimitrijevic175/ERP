@@ -1,12 +1,10 @@
 package com.dimitrijevic175.warehouse_service.controller;
 
-import com.dimitrijevic175.warehouse_service.dto.WarehouseUpdateRequestDto;
+import com.dimitrijevic175.warehouse_service.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import com.dimitrijevic175.warehouse_service.dto.LowStockItemDto;
-import com.dimitrijevic175.warehouse_service.dto.WarehouseDto;
 import com.dimitrijevic175.warehouse_service.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -58,5 +56,13 @@ public class WarehouseController {
     @GetMapping("/{id}")
     public ResponseEntity<WarehouseDto> getWarehouse(@PathVariable Long id) {
         return ResponseEntity.ok(warehouseService.getWarehouseById(id));
+    }
+
+    @PostMapping("/checkAvailability")
+    public ResponseEntity<CheckWarehouseAvailabilityResponseDto> checkAvailability(
+            @RequestBody CheckWarehouseAvailabilityRequestDto request
+    ) {
+        CheckWarehouseAvailabilityResponseDto response = warehouseService.findWarehouseForOrder(request);
+        return ResponseEntity.ok(response);
     }
 }

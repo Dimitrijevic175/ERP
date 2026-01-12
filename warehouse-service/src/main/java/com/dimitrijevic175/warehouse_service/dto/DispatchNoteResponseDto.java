@@ -23,4 +23,6 @@ public class DispatchNoteResponseDto {
         private Integer dispatchedQuantity;
         private java.math.BigDecimal salesPrice;
     }
+
+
 }

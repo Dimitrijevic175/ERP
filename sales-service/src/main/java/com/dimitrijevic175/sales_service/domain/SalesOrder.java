@@ -31,12 +31,6 @@ public class SalesOrder {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "confirmed_at")
-    private LocalDateTime confirmedAt;
-
-    @Column(name = "dispatched_at")
-    private LocalDateTime dispatchedAt;
-
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
