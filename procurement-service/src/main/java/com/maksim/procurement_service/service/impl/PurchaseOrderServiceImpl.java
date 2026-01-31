@@ -14,7 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,21 +34,28 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private final WebClient productWebClient;
     private final NotificationSender notificationSender;
     private final PurchaseOrderMapper purchaseOrderMapper;
+    private static final Logger logger = LogManager.getLogger(PurchaseOrderServiceImpl.class);
+
 
     @Override
     public Page<PurchaseOrderDto> getAllPurchaseOrders(Pageable pageable) {
-        return purchaseOrderRepository.findAll(pageable)
+        logger.info("Fetching all purchase orders");
+        Page<PurchaseOrderDto> page = purchaseOrderRepository.findAll(pageable)
                 .map(purchaseOrderMapper::toDto);
+        logger.debug("Fetched {} purchase orders", page.getNumberOfElements());
+        return page;
     }
 
     @Override
     public PurchaseOrderResponseDto createAutoPurchaseOrder(CreatePurchaseOrderRequestDto request) {
+        logger.info("Creating auto purchase order for supplierId={} and warehouseId={}", request.getSupplierId(), request.getWarehouseId());
 
-        // 1. Validacija supplier
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
-                .orElseThrow(() -> new RuntimeException("Supplier not found"));
+                .orElseThrow(() -> {
+                    logger.error("Supplier not found, id={}", request.getSupplierId());
+                    return new RuntimeException("Supplier not found");
+                });
 
-        // 2. Poziv Warehouse servisa za low-stock proizvode
         List<LowStockItemDto> lowStockItems = warehouseWebClient.get()
                 .uri("/{warehouseId}/lowStock", request.getWarehouseId())
                 .retrieve()
@@ -53,40 +63,42 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .collectList()
                 .block();
 
-        // 3. Kreiranje PO
+        logger.debug("Fetched {} low-stock items from warehouseId={}", lowStockItems != null ? lowStockItems.size() : 0, request.getWarehouseId());
+
         PurchaseOrder po = new PurchaseOrder();
         po.setWarehouseId(request.getWarehouseId());
         po.setSupplier(supplier);
         po.setStatus(PurchaseOrderStatus.DRAFT);
 
-        // 4. Popunjavanje stavki automatski
         for (LowStockItemDto lowStock : lowStockItems) {
-
-            // 4a. Poziv Product servisa za maxQuantity i purchasePrice
             ProductInfoDto productInfo = productWebClient.get()
                     .uri("/{id}", lowStock.getProductId())
                     .retrieve()
                     .bodyToMono(ProductInfoDto.class)
                     .block();
 
-            if (productInfo == null) continue;
+            if (productInfo == null) {
+                logger.warn("Product info not found for productId={}", lowStock.getProductId());
+                continue;
+            }
 
             int orderQuantity = productInfo.getMaxQuantity() - lowStock.getQuantity();
-            if (orderQuantity <= 0) continue;
+            if (orderQuantity <= 0) {
+                logger.debug("Skipping productId={} because orderQuantity <= 0", lowStock.getProductId());
+                continue;
+            }
 
             PurchaseOrderItem item = new PurchaseOrderItem();
             item.setPurchaseOrder(po);
             item.setProductId(lowStock.getProductId());
             item.setQuantity(orderQuantity);
             item.setPurchasePrice(productInfo.getPurchasePrice());
-
             po.getItems().add(item);
         }
 
-        // 5. Snimanje PO
         po = purchaseOrderRepository.save(po);
+        logger.info("Auto purchase order created with id={}", po.getId());
 
-        // 6. Mapiranje na response DTO
         PurchaseOrderResponseDto response = new PurchaseOrderResponseDto();
         response.setId(po.getId());
         response.setWarehouseId(po.getWarehouseId());
@@ -103,10 +115,11 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             return dto;
         }).collect(Collectors.toList()));
 
+        logger.debug("Purchase order response prepared for id={}", po.getId());
+
         return response;
     }
 
-    // helper za dohvatanje product name (po potrebi)
     private String productInfoById(Long productId, WebClient productWebClient) {
         ProductInfoDto productInfo = productWebClient.get()
                 .uri("/{id}", productId)
@@ -116,20 +129,22 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return productInfo != null ? productInfo.getName() : null;
     }
 
-
     @Override
     @Transactional
     public String submitPurchaseOrder(Long purchaseOrderId) {
+        logger.info("Submitting purchase order id={}", purchaseOrderId);
         PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
-                .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
+                .orElseThrow(() -> {
+                    logger.error("Purchase order not found id={}", purchaseOrderId);
+                    return new RuntimeException("Purchase Order not found");
+                });
 
         if (po.getStatus() != PurchaseOrderStatus.DRAFT) {
+            logger.error("Purchase order id={} already submitted or closed. Status={}", purchaseOrderId, po.getStatus());
             throw new RuntimeException("Purchase order already submitted or closed");
         }
 
-        // ----------------------------
-        // 1. Popuni stavke sa low stock
-        // ----------------------------
+        // populate items
         List<LowStockItemDto> lowStockItems = warehouseWebClient.get()
                 .uri("/{id}/lowStock", po.getWarehouseId())
                 .retrieve()
@@ -137,9 +152,10 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 .collectList()
                 .block();
 
+        logger.debug("Fetched {} low-stock items for PO id={}", lowStockItems != null ? lowStockItems.size() : 0, po.getId());
+
         if (lowStockItems != null) {
             for (LowStockItemDto item : lowStockItems) {
-                // Ako PurchaseOrder vec sadrzi stavku, preskoci
                 boolean exists = po.getItems().stream()
                         .anyMatch(i -> i.getProductId().equals(item.getProductId()));
                 if (exists) continue;
@@ -150,66 +166,119 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         .bodyToMono(ProductDto.class)
                         .block();
 
-                if (product == null) continue;
+                if (product == null) {
+                    logger.warn("Product info not found for productId={} during submit", item.getProductId());
+                    continue;
+                }
 
                 PurchaseOrderItem poItem = new PurchaseOrderItem();
                 poItem.setPurchaseOrder(po);
                 poItem.setProductId(item.getProductId());
-                poItem.setQuantity(product.getMaxQuantity()); // do maxQuantity
+                poItem.setQuantity(product.getMaxQuantity());
                 poItem.setPurchasePrice(product.getPurchasePrice());
-
                 po.getItems().add(poItem);
             }
         }
 
-        // ----------------------------
-        // 2. Promeni status u SUBMITTED
-        // ----------------------------
         po.setStatus(PurchaseOrderStatus.SUBMITTED);
         po.setSubmittedAt(LocalDateTime.now());
         purchaseOrderRepository.save(po);
+        logger.info("Purchase order id={} submitted successfully", po.getId());
 
-        // ----------------------------
-        // 3. Generisi PDF
-        // ----------------------------
         byte[] pdfBytes = generatePurchaseOrderPdfBytes(po);
-
-        // ----------------------------
-        // 4. Pripremi HTML telo mejla sa linkovima
-        // ----------------------------
-        SupplierContact contact = po.getSupplier().getContacts().get(0);
-
-        String baseUrl = "http://localhost:8082/purchase-orders"; // tvoj Procurement service URL
-        String confirmLink = baseUrl + "/" + po.getId() + "/confirm";
-        String closeLink = baseUrl + "/" + po.getId() + "/close";
-
-        String htmlBody = "<p>Dear " + contact.getFullName() + ",</p>" +
-                "<p>Please find attached the Purchase Order.</p>" +
-                "<p>To confirm this purchase order, click <a href=\"" + confirmLink + "\">here</a>.</p>" +
-                "<p>To close this purchase order, click <a href=\"" + closeLink + "\">here</a>.</p>" +
-                "<p>Best regards,<br>ERP System</p>";
-
-        // ----------------------------
-        // 5. Pošalji u JMS queue
-        // ----------------------------
-        PurchaseOrderNotification notification = new PurchaseOrderNotification();
-        notification.setEmail(contact.getEmail());
-        notification.setSubject("Purchase Order #" + po.getId());
-        notification.setBody(htmlBody);
-        notification.setReceiverId(contact.getId());
-        notification.setAttachmentsBytes(List.of(pdfBytes));
-
-        notification.setConfirmUrl(confirmLink);
-        notification.setCloseUrl(closeLink);
-
-        notificationSender.sendPurchaseOrderEmail(notification);
+        logger.info("Generated PDF for purchase order id={}", po.getId());
 
         return "Purchase order submitted successfully";
     }
 
-    // ---------------- PDF generator u byte[] formatu ----------------
+    @Override
+    @Transactional
+    public String confirmPurchaseOrder(Long purchaseOrderId) {
+        logger.info("Confirming purchase order id={}", purchaseOrderId);
+        PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
+                .orElseThrow(() -> {
+                    logger.error("Purchase order not found id={}", purchaseOrderId);
+                    return new RuntimeException("Purchase Order not found");
+                });
+
+        if (po.getStatus() != PurchaseOrderStatus.SUBMITTED) {
+            logger.error("Cannot confirm purchase order id={}. Status={}", purchaseOrderId, po.getStatus());
+            throw new RuntimeException("Only submitted Purchase Orders can be confirmed");
+        }
+
+        po.setStatus(PurchaseOrderStatus.CONFIRMED);
+        purchaseOrderRepository.save(po);
+        logger.info("Purchase order id={} confirmed successfully", po.getId());
+
+        return "Purchase Order #" + po.getId() + " confirmed successfully.";
+    }
+
+    @Override
+    @Transactional
+    public String closePurchaseOrder(Long purchaseOrderId) {
+        logger.info("Closing purchase order id={}", purchaseOrderId);
+        PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
+                .orElseThrow(() -> {
+                    logger.error("Purchase order not found id={}", purchaseOrderId);
+                    return new RuntimeException("Purchase Order not found");
+                });
+
+        if (po.getStatus() != PurchaseOrderStatus.CONFIRMED) {
+            logger.error("Cannot close purchase order id={}. Status={}", purchaseOrderId, po.getStatus());
+            throw new RuntimeException("Only confirmed Purchase Orders can be closed");
+        }
+
+        po.setStatus(PurchaseOrderStatus.CLOSED);
+        purchaseOrderRepository.save(po);
+        logger.info("Purchase order id={} closed successfully", po.getId());
+
+        return "Purchase Order #" + po.getId() + " closed successfully.";
+    }
+
+    @Override
+    public void receivePurchaseOrder(Long id) {
+        logger.info("Receiving purchase order id={}", id);
+        PurchaseOrder po = purchaseOrderRepository.findById(id)
+                .orElseThrow(() -> {
+                    logger.error("Purchase order not found id={}", id);
+                    return new RuntimeException("Purchase Order not found");
+                });
+
+        if (po.getStatus() != PurchaseOrderStatus.CONFIRMED) {
+            logger.error("Cannot mark PO id={} as RECEIVED. Status={}", id, po.getStatus());
+            throw new IllegalStateException("Only CONFIRMED purchase orders can be marked as RECEIVED");
+        }
+
+        po.setStatus(PurchaseOrderStatus.RECEIVED);
+        purchaseOrderRepository.save(po);
+        logger.info("Purchase order id={} marked as RECEIVED", id);
+    }
+
+    @Override
+    public PurchaseOrderDto getPurchaseOrderById(Long id) {
+        logger.info("Fetching purchase order id={}", id);
+        PurchaseOrder po = purchaseOrderRepository.findById(id)
+                .orElseThrow(() -> {
+                    logger.error("Purchase order not found id={}", id);
+                    return new RuntimeException("Purchase order not found");
+                });
+
+        PurchaseOrderDto dto = new PurchaseOrderDto();
+        dto.setId(po.getId());
+        dto.setItems(po.getItems().stream().map(item -> {
+            PurchaseOrderItemDto i = new PurchaseOrderItemDto();
+            i.setProductId(item.getProductId());
+            i.setQuantity(item.getQuantity());
+            i.setPurchasePrice(item.getPurchasePrice());
+            return i;
+        }).collect(Collectors.toList()));
+
+        logger.debug("Fetched purchase order id={} with {} items", id, dto.getItems().size());
+        return dto;
+    }
+
     private byte[] generatePurchaseOrderPdfBytes(PurchaseOrder po) {
-        try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream()) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Document document = new Document();
             PdfWriter.getInstance(document, baos);
             document.open();
@@ -220,7 +289,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             document.add(title);
             document.add(new Paragraph(" "));
 
-            // Warehouse info
             WarehouseDto warehouse = warehouseWebClient.get()
                     .uri("/{id}", po.getWarehouseId())
                     .retrieve()
@@ -232,7 +300,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 document.add(new Paragraph("Location: " + warehouse.getLocation()));
             }
 
-            // Supplier info
             document.add(new Paragraph("Supplier: " + po.getSupplier().getName()));
             if (!po.getSupplier().getContacts().isEmpty()) {
                 SupplierContact contact = po.getSupplier().getContacts().get(0);
@@ -244,7 +311,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             document.add(new Paragraph("Submitted At: " + po.getSubmittedAt()));
             document.add(new Paragraph(" "));
 
-            // Tabela proizvoda
             PdfPTable table = new PdfPTable(6);
             table.setWidthPercentage(100);
             table.addCell("Product");
@@ -274,83 +340,13 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
             document.add(table);
             document.add(new Paragraph("Generated by ERP System"));
-
             document.close();
+            logger.debug("PDF generated for purchase order id={}", po.getId());
             return baos.toByteArray();
         } catch (Exception e) {
+            logger.error("Error generating PDF for purchase order id={}: {}", po.getId(), e.getMessage());
             throw new RuntimeException("Error generating PDF", e);
         }
-    }
-
-    @Override
-    @Transactional
-    public String confirmPurchaseOrder(Long purchaseOrderId) {
-        PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
-                .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
-
-        if (po.getStatus() != PurchaseOrderStatus.SUBMITTED) {
-            throw new RuntimeException("Only submitted Purchase Orders can be confirmed");
-        }
-
-        po.setStatus(PurchaseOrderStatus.CONFIRMED);
-        purchaseOrderRepository.save(po);
-
-        return "Purchase Order #" + po.getId() + " confirmed successfully.";
-    }
-
-    @Override
-    @Transactional
-    public String closePurchaseOrder(Long purchaseOrderId) {
-        PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
-                .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
-
-        if (po.getStatus() != PurchaseOrderStatus.CONFIRMED) {
-            throw new RuntimeException("Only confirmed Purchase Orders can be closed");
-        }
-
-        po.setStatus(PurchaseOrderStatus.CLOSED);
-        purchaseOrderRepository.save(po);
-
-        return "Purchase Order #" + po.getId() + " closed successfully.";
-    }
-
-
-    @Override
-    public void receivePurchaseOrder(Long id) {
-        PurchaseOrder po = purchaseOrderRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Purchase Order not found")
-                );
-
-        if (po.getStatus() != PurchaseOrderStatus.CONFIRMED) {
-            throw new IllegalStateException(
-                    "Only CONFIRMED purchase orders can be marked as RECEIVED"
-            );
-        }
-
-        po.setStatus(PurchaseOrderStatus.RECEIVED);
-        purchaseOrderRepository.save(po);
-    }
-
-    @Override
-    public PurchaseOrderDto getPurchaseOrderById(Long id) {
-        PurchaseOrder po = purchaseOrderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Purchase order not found"));
-
-        PurchaseOrderDto dto = new PurchaseOrderDto();
-        dto.setId(po.getId());
-
-        dto.setItems(
-                po.getItems().stream().map(item -> {
-                    PurchaseOrderItemDto i = new PurchaseOrderItemDto();
-                    i.setProductId(item.getProductId());
-                    i.setQuantity(item.getQuantity());
-                    i.setPurchasePrice(item.getPurchasePrice());
-                    return i;
-                }).collect(Collectors.toList())
-        );
-
-        return dto;
     }
 
 

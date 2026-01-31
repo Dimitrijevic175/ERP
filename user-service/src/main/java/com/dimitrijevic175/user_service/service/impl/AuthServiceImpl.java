@@ -11,6 +11,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Service
 @Transactional
@@ -18,6 +20,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final TokenService tokenService;
+    private static final Logger log = LogManager.getLogger(AuthServiceImpl.class);
+
 
     public AuthServiceImpl(UserRepository userRepository, TokenService tokenService) {
         this.userRepository = userRepository;
@@ -25,14 +29,22 @@ public class AuthServiceImpl implements AuthService {
     }
     @Override
     public LoginResponse login(LoginRequest request) {
+        log.info("Attempting login for email: {}", request.getEmail());
+
         // Pronađi korisnika po emailu
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    log.warn("Login failed: invalid email {}", request.getEmail());
+                    return new RuntimeException("Invalid email or password");
+                });
 
         // Proveri lozinku
         if (!PasswordUtil.checkPassword(request.getPassword(), user.getPassword())) {
+            log.warn("Login failed: invalid password for email {}", request.getEmail());
             throw new RuntimeException("Invalid email or password");
         }
+
+        log.info("Login successful for user id: {}", user.getId());
 
         // Kreiraj claims za token
         Claims claims = Jwts.claims();
@@ -44,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generiši token preko TokenService
         String token = tokenService.generate(claims);
+        log.info("JWT token generated for user id: {}", user.getId());
 
         // Vrati LoginResponse DTO
         return new LoginResponse(
