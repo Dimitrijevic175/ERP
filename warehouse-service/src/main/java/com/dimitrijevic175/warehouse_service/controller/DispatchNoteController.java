@@ -2,6 +2,7 @@ package com.dimitrijevic175.warehouse_service.controller;
 
 import com.dimitrijevic175.warehouse_service.domain.DispatchNote;
 import com.dimitrijevic175.warehouse_service.dto.CreateDispatchNoteRequestDto;
+import com.dimitrijevic175.warehouse_service.dto.DispatchNoteDto;
 import com.dimitrijevic175.warehouse_service.dto.DispatchNoteResponseDto;
 import com.dimitrijevic175.warehouse_service.service.DispatchNoteService;
 import lombok.RequiredArgsConstructor;
@@ -66,5 +67,24 @@ public class DispatchNoteController {
         response.setItems(items);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/by-sales-order/{salesOrderId}")
+    public ResponseEntity<DispatchNoteDto> getDispatchNoteBySalesOrderId(
+            @PathVariable Long salesOrderId
+    ) {
+        DispatchNoteDto dispatchNote = dispatchNoteService.getDispatchNoteBySalesOrderId(salesOrderId);
+        return ResponseEntity.ok(dispatchNote);
+    }
+    @PostMapping("/{id}/rollback")
+    public ResponseEntity<Void> rollbackDispatchNote(@PathVariable Long id) {
+        dispatchNoteService.rollbackDispatchNote(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<Void> confirmDispatchNote(@PathVariable Long id) {
+        dispatchNoteService.confirmDispatchNote(id);
+        return ResponseEntity.ok().build();
     }
 }

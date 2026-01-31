@@ -8,6 +8,8 @@ import com.dimitrijevic175.warehouse_service.repository.WarehouseRepository;
 import com.dimitrijevic175.warehouse_service.repository.WarehouseStockRepository;
 import com.dimitrijevic175.warehouse_service.service.ReceiptNoteService;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,34 +29,53 @@ public class ReceiptNoteServiceImpl implements ReceiptNoteService {
     private final WebClient procurementWebClient;
     private final WarehouseStockRepository warehouseStockRepository;
     private final ReceiptNoteMapper receiptNoteMapper;
+    private static final Logger log = LogManager.getLogger(ReceiptNoteServiceImpl.class);
 
 
     @Override
     public Page<ReceiptNoteResponseDto> getAllReceiptNotes(Pageable pageable) {
-        return receiptNoteRepository.findAll(pageable)
+        log.info("Fetching all receipt notes, pageable={}", pageable);
+        Page<ReceiptNoteResponseDto> page = receiptNoteRepository.findAll(pageable)
                 .map(ReceiptNoteMapper::toDto);
+        log.debug("Fetched {} receipt notes", page.getNumberOfElements());
+        return page;
     }
 
     @Override
     public ReceiptNoteResponseDto getReceiptNoteById(Long id) {
+        log.info("Fetching receipt note by id={}", id);
         ReceiptNote receiptNote = receiptNoteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Receipt note not found"));
-        return ReceiptNoteMapper.toDto(receiptNote);
+                .orElseThrow(() -> {
+                    log.error("Receipt note not found with id={}", id);
+                    return new RuntimeException("Receipt note not found");
+                });
+        ReceiptNoteResponseDto dto = ReceiptNoteMapper.toDto(receiptNote);
+        log.debug("Fetched receipt note: {}", dto);
+        return dto;
     }
 
     @Override
     public void deleteReceiptNote(Long id) {
+        log.info("Deleting receipt note with id={}", id);
         ReceiptNote receiptNote = receiptNoteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Receipt note not found"));
+                .orElseThrow(() -> {
+                    log.error("Receipt note not found with id={}", id);
+                    return new RuntimeException("Receipt note not found");
+                });
         receiptNoteRepository.delete(receiptNote);
+        log.info("Receipt note with id={} deleted successfully", id);
     }
 
     @Override
-    public ReceiptNoteResponseDto createReceiptNoteFromPurchaseOrder(
-            CreateReceiptNoteRequestDto request
-    ) {
+    public ReceiptNoteResponseDto createReceiptNoteFromPurchaseOrder(CreateReceiptNoteRequestDto request) {
+        log.info("Creating receipt note from purchase order id={} for warehouseId={}",
+                request.getPurchaseOrderId(), request.getWarehouseId());
+
         Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                .orElseThrow(() -> new RuntimeException("Warehouse not found"));
+                .orElseThrow(() -> {
+                    log.error("Warehouse not found with id={}", request.getWarehouseId());
+                    return new RuntimeException("Warehouse not found");
+                });
 
         PurchaseOrderDto purchaseOrder = procurementWebClient
                 .get()
@@ -64,6 +85,7 @@ public class ReceiptNoteServiceImpl implements ReceiptNoteService {
                 .block();
 
         if (purchaseOrder == null) {
+            log.error("Purchase order not found with id={}", request.getPurchaseOrderId());
             throw new RuntimeException("Purchase order not found");
         }
 
@@ -79,21 +101,27 @@ public class ReceiptNoteServiceImpl implements ReceiptNoteService {
             item.setOrderedQuantity(poItem.getQuantity());
             item.setReceivedQuantity(poItem.getQuantity()); // default
             item.setPurchasePrice(poItem.getPurchasePrice());
-
             receiptNote.getItems().add(item);
         });
 
         ReceiptNote saved = receiptNoteRepository.save(receiptNote);
+        log.info("Receipt note created with id={} from purchase order id={}", saved.getId(), purchaseOrder.getId());
 
         return ReceiptNoteMapper.toDto(saved);
     }
 
     @Override
     public void confirmReceiptNote(Long receiptNoteId) {
+        log.info("Confirming receipt note with id={}", receiptNoteId);
+
         ReceiptNote receiptNote = receiptNoteRepository.findById(receiptNoteId)
-                .orElseThrow(() -> new RuntimeException("Receipt note not found"));
+                .orElseThrow(() -> {
+                    log.error("Receipt note not found with id={}", receiptNoteId);
+                    return new RuntimeException("Receipt note not found");
+                });
 
         if (receiptNote.getStatus() == ReceiptNoteStatus.CONFIRMED) {
+            log.warn("Receipt note with id={} already confirmed", receiptNoteId);
             throw new IllegalStateException("Receipt note already confirmed");
         }
 
@@ -101,29 +129,27 @@ public class ReceiptNoteServiceImpl implements ReceiptNoteService {
 
         receiptNote.getItems().forEach(item -> {
             WarehouseStock stock = warehouseStockRepository
-                    .findByWarehouseIdAndProductId(
-                            warehouse.getId(),
-                            item.getProductId()
-                    )
+                    .findByWarehouseIdAndProductId(warehouse.getId(), item.getProductId())
                     .orElseGet(() -> {
                         WarehouseStock ws = new WarehouseStock();
                         ws.setWarehouse(warehouse);
                         ws.setProductId(item.getProductId());
-                        ws.setQuantity(item.getReceivedQuantity());
+                        ws.setQuantity(0);
                         return ws;
                     });
 
-            stock.setQuantity(
-                    stock.getQuantity() + item.getReceivedQuantity()
-            );
+            log.debug("Updating stock for productId={} in warehouseId={} (currentQty={}, addQty={})",
+                    item.getProductId(), warehouse.getId(), stock.getQuantity(), item.getReceivedQuantity());
 
+            stock.setQuantity(stock.getQuantity() + item.getReceivedQuantity());
             warehouseStockRepository.save(stock);
         });
 
         receiptNote.setStatus(ReceiptNoteStatus.CONFIRMED);
         receiptNote.setConfirmedAt(LocalDateTime.now());
-
         receiptNoteRepository.save(receiptNote);
+
+        log.info("Receipt note with id={} confirmed successfully", receiptNoteId);
 
         try {
             String response = procurementWebClient
@@ -132,13 +158,10 @@ public class ReceiptNoteServiceImpl implements ReceiptNoteService {
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
-            System.out.println("Calling: /purchase-orders/" + receiptNote.getPurchaseOrderId() + "/close");
-
-            System.out.println("Purchase order closed: " + response);
+            log.info("Purchase order id={} closed successfully: {}", receiptNote.getPurchaseOrderId(), response);
         } catch (Exception e) {
-            System.err.println("Failed to close purchase order with id " + receiptNote.getPurchaseOrderId() + ": " + e.getMessage());
+            log.error("Failed to close purchase order with id={}", receiptNote.getPurchaseOrderId(), e);
         }
-
     }
 
 }
