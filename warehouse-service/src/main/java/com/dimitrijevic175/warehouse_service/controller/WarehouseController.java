@@ -1,6 +1,8 @@
 package com.dimitrijevic175.warehouse_service.controller;
 
+import com.dimitrijevic175.warehouse_service.domain.WarehouseStock;
 import com.dimitrijevic175.warehouse_service.dto.*;
+import com.dimitrijevic175.warehouse_service.repository.WarehouseStockRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,6 +21,25 @@ import java.util.List;
 public class WarehouseController {
 
     private final WarehouseService warehouseService;
+    private final WarehouseStockRepository warehouseStockRepository;
+
+    @GetMapping("/{id}/stock")
+    public ResponseEntity<List<WarehouseStockDto>> getWarehouseStock(@PathVariable Long id) {
+        List<WarehouseStock> stockList = warehouseStockRepository.findByWarehouseId(id);
+
+        List<WarehouseStockDto> dtos = stockList.stream()
+                .map(stock -> {
+                    WarehouseStockDto dto = new WarehouseStockDto();
+                    dto.setId(stock.getId());
+                    dto.setProductId(stock.getProductId());
+                    dto.setQuantity(stock.getQuantity());
+                    return dto;
+                })
+                .toList();
+
+        return ResponseEntity.ok(dtos);
+    }
+
 
     @GetMapping
     public ResponseEntity<Page<WarehouseDto>> getAllWarehouses(
