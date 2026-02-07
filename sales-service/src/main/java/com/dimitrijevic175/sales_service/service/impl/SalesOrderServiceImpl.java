@@ -1,5 +1,6 @@
 package com.dimitrijevic175.sales_service.service.impl;
 
+import com.dimitrijevic175.sales_service.configuration.WarehouseServiceClient;
 import com.dimitrijevic175.sales_service.domain.*;
 import com.dimitrijevic175.sales_service.dto.*;
 import com.dimitrijevic175.sales_service.repository.*;
@@ -27,7 +28,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
 
     private final SalesOrderRepository salesOrderRepository;
     private final CustomerRepository customerRepository;
-    private final WebClient warehouseWebClient;
+    private final WarehouseServiceClient warehouseWebClient;
     private static final Logger logger = LogManager.getLogger(SalesOrderServiceImpl.class);
 
 
@@ -50,26 +51,18 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                 .collect(Collectors.toList())
         );
 
-        CheckAvailabilityResponseDto response = warehouseWebClient.post()
-                .uri("/warehouses/checkAvailability")
-                .bodyValue(availabilityRequest)
-                .retrieve()
-                .bodyToMono(CheckAvailabilityResponseDto.class)
-                .block();
+        CheckAvailabilityResponseDto response = warehouseWebClient.checkAvailability(availabilityRequest);
 
-        if (response == null || response.getWarehouseId() == null) {
-            logger.error("No warehouse can fulfill the requested order for customerId={}", request.getCustomerId());
+        if (response.getWarehouseId() == null) {
             throw new RuntimeException("No warehouse can fulfill the requested order");
         }
-
-        Long warehouseId = response.getWarehouseId();
-        logger.debug("Warehouse {} can fulfill the order", warehouseId);
+        logger.debug("Warehouse {} can fulfill the order", response.getWarehouseId());
 
         // 3️⃣ Kreiraj SalesOrder
         SalesOrder salesOrder = new SalesOrder();
         salesOrder.setCustomer(customer);
         salesOrder.setStatus(SalesOrderStatus.CREATED);
-        salesOrder.setWarehouseId(warehouseId);
+        salesOrder.setWarehouseId(response.getWarehouseId());
 
         List<SalesOrderItem> items = request.getItems().stream().map(i -> {
             SalesOrderItem item = new SalesOrderItem();
@@ -87,20 +80,15 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         logger.info("Sales order {} created with {} items", salesOrder.getId(), items.size());
 
         // 4️⃣ Kreiraj dispatch note u warehouse servisu
-        DispatchNoteRequestDto dispatchNoteRequest = new DispatchNoteRequestDto(salesOrder);
-        warehouseWebClient.post()
-                .uri("/dispatch-notes")
-                .bodyValue(dispatchNoteRequest)
-                .retrieve()
-                .bodyToMono(Void.class)
-                .block();
+        warehouseWebClient.createDispatchNote(new DispatchNoteRequestDto(salesOrder));
+
         logger.info("Dispatch note created for sales order {}", salesOrder.getId());
 
         // 5️⃣ Mapiraj u response DTO
         SalesOrderResponseDto responseDto = new SalesOrderResponseDto();
         responseDto.setId(salesOrder.getId());
         responseDto.setCustomerId(customer.getId());
-        responseDto.setWarehouseId(warehouseId);
+        responseDto.setWarehouseId(response.getWarehouseId());
         responseDto.setStatus(salesOrder.getStatus().name());
         responseDto.setCreatedAt(salesOrder.getCreatedAt());
         responseDto.setItems(items.stream().map(i -> {
@@ -122,56 +110,30 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         logger.info("Canceling sales order {}", orderId);
 
         SalesOrder order = salesOrderRepository.findById(orderId)
-                .orElseThrow(() -> {
-                    logger.error("Order not found with id={}", orderId);
-                    return new RuntimeException("Order not found");
-                });
+                .orElseThrow(() -> new RuntimeException("Order not found"));
 
         if (order.getStatus() == SalesOrderStatus.CLOSED) {
-            logger.warn("Order {} is already closed", orderId);
             throw new RuntimeException("Order already canceled");
         }
 
-        DispatchNoteDto dispatchNote;
-        try {
-            dispatchNote = warehouseWebClient
-                    .get()
-                    .uri("/dispatch-notes/by-sales-order/{orderId}", orderId)
-                    .retrieve()
-                    .bodyToMono(DispatchNoteDto.class)
-                    .block();
-        } catch (Exception e) {
-            logger.warn("Could not retrieve dispatch note for order {}: {}", orderId, e.getMessage());
-            dispatchNote = null;
-        }
+        DispatchNoteDto dispatchNote =
+                warehouseWebClient.getDispatchNoteBySalesOrderId(orderId);
 
         if (dispatchNote != null) {
-            final Long dispatchNoteId = dispatchNote.getId();
             if (dispatchNote.getStatus() != DispatchNoteStatusDto.DRAFT) {
-                logger.error("Cannot cancel order {} because goods already dispatched", orderId);
-                throw new RuntimeException("Order cannot be canceled because goods are already dispatched");
+                throw new RuntimeException(
+                        "Order cannot be canceled because goods are already dispatched"
+                );
             }
 
-            warehouseWebClient
-                    .post()
-                    .uri("/dispatch-notes/{id}/rollback", dispatchNote.getId())
-                    .retrieve()
-                    .onStatus(
-                            status -> status.is4xxClientError() || status.is5xxServerError(),
-                            response -> response.bodyToMono(String.class)
-                                    .map(body -> {
-                                        logger.error("Warehouse rollback failed for dispatchNote {}: {}", dispatchNoteId, body);
-                                        return new RuntimeException("Warehouse rollback failed: " + body);
-                                    })
-                    )
-                    .bodyToMono(Void.class)
-                    .block();
+            warehouseWebClient.rollbackDispatchNote(dispatchNote.getId());
             logger.info("Warehouse rollback successful for dispatchNote {}", dispatchNote.getId());
         }
 
         order.setStatus(SalesOrderStatus.CLOSED);
         order.setClosedAt(LocalDateTime.now());
         salesOrderRepository.save(order);
+
         logger.info("Order {} canceled successfully", orderId);
     }
 
