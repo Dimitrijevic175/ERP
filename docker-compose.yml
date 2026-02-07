@@ -53,8 +53,12 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/procurement_service_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=admin
+      - PRODUCT_SERVICE_URL=http://product-service:8081  # KORISTI IME SERVISA
+      - WAREHOUSE_SERVICE_URL=http://warehouse-service:8084
     depends_on:
       - db
+      - product-service
+      - warehouse-service
     networks:
       - erp-network
 
@@ -68,6 +72,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/sales_service_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=admin
+      - WAREHOUSE_SERVICE_URL=http://warehouse-service:8084
     depends_on:
       - db
     networks:

@@ -1,5 +1,7 @@
 package com.maksim.procurement_service.service.impl;
 
+import com.maksim.procurement_service.configuration.ProductClient;
+import com.maksim.procurement_service.configuration.WarehouseClient;
 import com.maksim.procurement_service.domain.*;
 import com.maksim.procurement_service.dto.*;
 import com.maksim.procurement_service.listener.NotificationSender;
@@ -30,8 +32,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final SupplierRepository supplierRepository;
-    private final WebClient warehouseWebClient;
-    private final WebClient productWebClient;
+    private final WarehouseClient warehouseClient;
+    private final ProductClient productClient;
     private final NotificationSender notificationSender;
     private final PurchaseOrderMapper purchaseOrderMapper;
     private static final Logger logger = LogManager.getLogger(PurchaseOrderServiceImpl.class);
@@ -56,12 +58,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     return new RuntimeException("Supplier not found");
                 });
 
-        List<LowStockItemDto> lowStockItems = warehouseWebClient.get()
-                .uri("/{warehouseId}/lowStock", request.getWarehouseId())
-                .retrieve()
-                .bodyToFlux(LowStockItemDto.class)
-                .collectList()
-                .block();
+        List<LowStockItemDto> lowStockItems = warehouseClient.getLowStock(request.getWarehouseId());
+
 
         logger.debug("Fetched {} low-stock items from warehouseId={}", lowStockItems != null ? lowStockItems.size() : 0, request.getWarehouseId());
 
@@ -71,11 +69,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po.setStatus(PurchaseOrderStatus.DRAFT);
 
         for (LowStockItemDto lowStock : lowStockItems) {
-            ProductInfoDto productInfo = productWebClient.get()
-                    .uri("/{id}", lowStock.getProductId())
-                    .retrieve()
-                    .bodyToMono(ProductInfoDto.class)
-                    .block();
+            ProductInfoDto productInfo = productClient.getProductById(lowStock.getProductId());
+
 
             if (productInfo == null) {
                 logger.warn("Product info not found for productId={}", lowStock.getProductId());
@@ -111,7 +106,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             dto.setProductId(item.getProductId());
             dto.setQuantity(item.getQuantity());
             dto.setPurchasePrice(item.getPurchasePrice());
-            dto.setProductName(productInfoById(item.getProductId(), productWebClient));
+            ProductInfoDto prodInfo = productClient.getProductById(item.getProductId());
+            dto.setProductName(prodInfo != null ? prodInfo.getName() : null);
             return dto;
         }).collect(Collectors.toList()));
 
@@ -144,13 +140,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             throw new RuntimeException("Purchase order already submitted or closed");
         }
 
-        // populate items
-        List<LowStockItemDto> lowStockItems = warehouseWebClient.get()
-                .uri("/{id}/lowStock", po.getWarehouseId())
-                .retrieve()
-                .bodyToFlux(LowStockItemDto.class)
-                .collectList()
-                .block();
+        List<LowStockItemDto> lowStockItems = warehouseClient.getLowStock(po.getWarehouseId());
+
 
         logger.debug("Fetched {} low-stock items for PO id={}", lowStockItems != null ? lowStockItems.size() : 0, po.getId());
 
@@ -160,11 +151,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         .anyMatch(i -> i.getProductId().equals(item.getProductId()));
                 if (exists) continue;
 
-                ProductDto product = productWebClient.get()
-                        .uri("/{id}", item.getProductId())
-                        .retrieve()
-                        .bodyToMono(ProductDto.class)
-                        .block();
+                ProductInfoDto product = productClient.getProductById(item.getProductId());
+
 
                 if (product == null) {
                     logger.warn("Product info not found for productId={} during submit", item.getProductId());
@@ -277,7 +265,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return dto;
     }
 
-    private byte[] generatePurchaseOrderPdfBytes(PurchaseOrder po) {
+    public byte[] generatePurchaseOrderPdfBytes(PurchaseOrder po) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             Document document = new Document();
             PdfWriter.getInstance(document, baos);
@@ -289,11 +277,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             document.add(title);
             document.add(new Paragraph(" "));
 
-            WarehouseDto warehouse = warehouseWebClient.get()
-                    .uri("/{id}", po.getWarehouseId())
-                    .retrieve()
-                    .bodyToMono(WarehouseDto.class)
-                    .block();
+            WarehouseDto warehouse = warehouseClient.getWarehouseById(po.getWarehouseId());
+
 
             if (warehouse != null) {
                 document.add(new Paragraph("Warehouse: " + warehouse.getName()));
@@ -321,11 +306,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             table.addCell("Total");
 
             for (PurchaseOrderItem item : po.getItems()) {
-                ProductDto product = productWebClient.get()
-                        .uri("/{id}", item.getProductId())
-                        .retrieve()
-                        .bodyToMono(ProductDto.class)
-                        .block();
+                ProductDto product = productClient.getFullProductById(item.getProductId());
+
 
                 if (product == null) continue;
 
