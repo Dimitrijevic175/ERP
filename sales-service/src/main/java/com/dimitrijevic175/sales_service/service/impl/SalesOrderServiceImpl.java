@@ -76,21 +76,24 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         }).collect(Collectors.toList());
 
         salesOrder.setItems(items);
-        salesOrderRepository.save(salesOrder);
-        logger.info("Sales order {} created with {} items", salesOrder.getId(), items.size());
+//        salesOrderRepository.save(salesOrder);
+        SalesOrder savedOrder = salesOrderRepository.save(salesOrder);
+
+
+        logger.info("Sales order {} created with {} items", savedOrder.getId(), items.size());
 
         // 4️⃣ Kreiraj dispatch note u warehouse servisu
-        warehouseWebClient.createDispatchNote(new DispatchNoteRequestDto(salesOrder));
+        warehouseWebClient.createDispatchNote(new DispatchNoteRequestDto(savedOrder));
 
-        logger.info("Dispatch note created for sales order {}", salesOrder.getId());
+        logger.info("Dispatch note created for sales order {}", savedOrder.getId());
 
         // 5️⃣ Mapiraj u response DTO
         SalesOrderResponseDto responseDto = new SalesOrderResponseDto();
-        responseDto.setId(salesOrder.getId());
+        responseDto.setId(savedOrder.getId());
         responseDto.setCustomerId(customer.getId());
         responseDto.setWarehouseId(response.getWarehouseId());
         responseDto.setStatus(salesOrder.getStatus().name());
-        responseDto.setCreatedAt(salesOrder.getCreatedAt());
+        responseDto.setCreatedAt(savedOrder.getCreatedAt());
         responseDto.setItems(items.stream().map(i -> {
             SalesOrderResponseDto.SalesOrderItemDto dto = new SalesOrderResponseDto.SalesOrderItemDto();
             dto.setProductId(i.getProductId());

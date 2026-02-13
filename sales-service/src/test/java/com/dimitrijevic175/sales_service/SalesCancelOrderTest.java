@@ -27,7 +27,7 @@ class SalesCancelOrderTest {
     private SalesOrderRepository salesOrderRepository;
 
     @Mock
-    private WarehouseServiceClient warehouseWebClient;
+    private WarehouseServiceClient warehouseClient;
 
     @InjectMocks
     private SalesOrderServiceImpl salesOrderService;
@@ -42,58 +42,52 @@ class SalesCancelOrderTest {
     }
 
     @Test
-    void cancelOrder_success_withDraftDispatchNote() {
-        // given
+    void shouldCancelOrder_whenDispatchNoteIsDraft() {
+        // priprema podataka
         DispatchNoteDto dispatchNote = new DispatchNoteDto();
         dispatchNote.setId(10L);
         dispatchNote.setStatus(DispatchNoteStatusDto.DRAFT);
 
-        when(salesOrderRepository.findById(1L))
-                .thenReturn(Optional.of(order));
-        when(warehouseWebClient.getDispatchNoteBySalesOrderId(1L))
-                .thenReturn(dispatchNote);
+        // vrati kada
+        when(salesOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(warehouseClient.getDispatchNoteBySalesOrderId(1L)).thenReturn(dispatchNote);
+        when(salesOrderRepository.save(order)).thenReturn(order);
 
-        // when
+        // testiramo sut
         salesOrderService.cancelOrder(1L);
 
-        // then
-        assertEquals(SalesOrderStatus.CLOSED, order.getStatus());
-        assertNotNull(order.getClosedAt());
+        // proveri rezultat
+         assertEquals(SalesOrderStatus.CLOSED, order.getStatus());
+         assertNotNull(order.getClosedAt());
 
-        verify(warehouseWebClient)
-                .rollbackDispatchNote(10L);
-        verify(salesOrderRepository)
-                .save(order);
+        // proveri da li su se pozivi desili
+        verify(warehouseClient).rollbackDispatchNote(10L);
+        verify(salesOrderRepository).save(order);
     }
 
     @Test
-    void cancelOrder_success_withoutDispatchNote() {
-        // given
-        when(salesOrderRepository.findById(1L))
-                .thenReturn(Optional.of(order));
-        when(warehouseWebClient.getDispatchNoteBySalesOrderId(1L))
-                .thenReturn(null);
+    void shouldCancelOrder_whenNoDispatchNoteExists() {
 
-        // when
+        when(salesOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(warehouseClient.getDispatchNoteBySalesOrderId(1L)).thenReturn(null);
+        when(salesOrderRepository.save(order)).thenReturn(order);
+
         salesOrderService.cancelOrder(1L);
 
-        // then
-        assertEquals(SalesOrderStatus.CLOSED, order.getStatus());
-        assertNotNull(order.getClosedAt());
 
-        verify(warehouseWebClient, never())
-                .rollbackDispatchNote(any());
-        verify(salesOrderRepository)
-                .save(order);
+       assertEquals(SalesOrderStatus.CLOSED, order.getStatus());
+       assertNotNull(order.getClosedAt());
+
+        verify(warehouseClient, never()).rollbackDispatchNote(any());
+        verify(salesOrderRepository).save(order);
     }
 
     @Test
-    void cancelOrder_orderNotFound_throwsException() {
-        // given
-        when(salesOrderRepository.findById(1L))
-                .thenReturn(Optional.empty());
+    void shouldThrowException_whenOrderNotFound() {
 
-        // when + then
+        when(salesOrderRepository.findById(1L)).thenReturn(Optional.empty());
+
+
         RuntimeException ex = assertThrows(
                 RuntimeException.class,
                 () -> salesOrderService.cancelOrder(1L)
@@ -101,19 +95,17 @@ class SalesCancelOrderTest {
 
         assertEquals("Order not found", ex.getMessage());
 
-        verifyNoInteractions(warehouseWebClient);
+        verifyNoInteractions(warehouseClient);
         verify(salesOrderRepository, never()).save(any());
     }
 
     @Test
-    void cancelOrder_orderAlreadyClosed_throwsException() {
-        // given
+    void shouldThrowException_whenOrderAlreadyClosed() {
+
         order.setStatus(SalesOrderStatus.CLOSED);
 
-        when(salesOrderRepository.findById(1L))
-                .thenReturn(Optional.of(order));
+        when(salesOrderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        // when + then
         RuntimeException ex = assertThrows(
                 RuntimeException.class,
                 () -> salesOrderService.cancelOrder(1L)
@@ -121,23 +113,20 @@ class SalesCancelOrderTest {
 
         assertEquals("Order already canceled", ex.getMessage());
 
-        verifyNoInteractions(warehouseWebClient);
+        verifyNoInteractions(warehouseClient);
         verify(salesOrderRepository, never()).save(any());
     }
 
     @Test
-    void cancelOrder_dispatchNoteNotDraft_throwsException() {
-        // given
+    void shouldThrowException_whenDispatchNoteIsNotDraft() {
+
         DispatchNoteDto dispatchNote = new DispatchNoteDto();
         dispatchNote.setId(10L);
         dispatchNote.setStatus(DispatchNoteStatusDto.CONFIRMED);
 
-        when(salesOrderRepository.findById(1L))
-                .thenReturn(Optional.of(order));
-        when(warehouseWebClient.getDispatchNoteBySalesOrderId(1L))
-                .thenReturn(dispatchNote);
+        when(salesOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(warehouseClient.getDispatchNoteBySalesOrderId(1L)).thenReturn(dispatchNote);
 
-        // when + then
         RuntimeException ex = assertThrows(
                 RuntimeException.class,
                 () -> salesOrderService.cancelOrder(1L)
@@ -148,10 +137,9 @@ class SalesCancelOrderTest {
                 ex.getMessage()
         );
 
-        verify(warehouseWebClient, never())
-                .rollbackDispatchNote(any());
-        verify(salesOrderRepository, never())
-                .save(any());
+        verify(warehouseClient, never()).rollbackDispatchNote(any());
+        verify(salesOrderRepository, never()).save(any());
     }
 }
+
 

@@ -7,6 +7,7 @@ import com.dimitrijevic175.sales_service.dto.*;
 import com.dimitrijevic175.sales_service.repository.CustomerRepository;
 import com.dimitrijevic175.sales_service.repository.SalesOrderRepository;
 import com.dimitrijevic175.sales_service.service.impl.SalesOrderServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,122 +33,105 @@ class SalesServiceTest {
     private SalesOrderRepository salesOrderRepository;
 
     @Mock
-    private WarehouseServiceClient warehouseWebClient;
+    private WarehouseServiceClient warehouseClient;
 
     @InjectMocks
-    private SalesOrderServiceImpl salesService;
+    private SalesOrderServiceImpl salesOrderService;
+
+    private CreateSalesOrderRequestDto request;
+    private Customer customer;
+
+    @BeforeEach
+    void setUp() {
+        request = createSalesOrderRequest();
+
+        customer = new Customer();
+        customer.setId(1L);
+        customer.setEmail("test@mail.com");
+    }
 
     @Test
     void shouldCreateSalesOrderSuccessfully() {
-        // given
-        Long customerId = 1L;
+
+        // Priprema podataka
         Long warehouseId = 10L;
 
-        Customer customer = new Customer();
-        customer.setId(customerId);
-        customer.setEmail("test@mail.com");
+        CheckAvailabilityResponseDto availability = new CheckAvailabilityResponseDto();
+        availability.setWarehouseId(warehouseId);
 
-        when(customerRepository.findById(customerId))
-                .thenReturn(Optional.of(customer));
+        SalesOrder savedOrder = new SalesOrder();
+        savedOrder.setId(100L);
 
-        CheckAvailabilityResponseDto availabilityResponse =
-                new CheckAvailabilityResponseDto();
-        availabilityResponse.setWarehouseId(warehouseId);
+        // kada se pozovu side effektovi, da vrati nase podatke koje smo setovali
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(warehouseClient.checkAvailability(any())).thenReturn(availability);
+        when(salesOrderRepository.save(any(SalesOrder.class))).thenReturn(savedOrder);
 
-        when(warehouseWebClient.checkAvailability(any()))
-                .thenReturn(availabilityResponse);
+        // Pozivam sut da testiram metodu
+        SalesOrderResponseDto response = salesOrderService.createSalesOrder(request);
 
-        when(salesOrderRepository.save(any(SalesOrder.class)))
-                .thenAnswer(invocation -> {
-                    SalesOrder so = invocation.getArgument(0);
-                    so.setId(100L);
-                    return so;
-                });
-
-        CreateSalesOrderRequestDto request =
-                createSalesOrderRequest();
-
-        // when
-        SalesOrderResponseDto response =
-                salesService.createSalesOrder(request);
-
-        // then
         assertNotNull(response);
         assertEquals(100L, response.getId());
-        assertEquals(customerId, response.getCustomerId());
+        assertEquals(1L, response.getCustomerId());
         assertEquals(warehouseId, response.getWarehouseId());
         assertEquals("CREATED", response.getStatus());
         assertEquals(1, response.getItems().size());
 
-        verify(warehouseWebClient)
-                .createDispatchNote(any(DispatchNoteRequestDto.class));
-        verify(salesOrderRepository)
-                .save(any(SalesOrder.class));
+        // VERIFY
+        verify(customerRepository).findById(1L);
+        verify(warehouseClient).checkAvailability(any());
+        verify(warehouseClient).createDispatchNote(any(DispatchNoteRequestDto.class));
+        verify(salesOrderRepository).save(any(SalesOrder.class));
     }
 
     @Test
     void shouldThrowExceptionWhenCustomerNotFound() {
-        // given
-        when(customerRepository.findById(anyLong()))
-                .thenReturn(Optional.empty());
 
-        CreateSalesOrderRequestDto request =
-                createSalesOrderRequest();
+        when(customerRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        // when / then
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> salesService.createSalesOrder(request)
+        // pozivam sut da testiram metodu, s obzirom da baca exception hvatam ga.
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> salesOrderService.createSalesOrder(request)
         );
 
-        assertEquals("Customer not found", ex.getMessage());
+        // proveravam da li je exception ocekivan,
+        assertEquals("Customer not found", exception.getMessage());
 
-        verifyNoInteractions(warehouseWebClient);
+        // VERIFY
+        verify(customerRepository).findById(anyLong());
+        verifyNoInteractions(warehouseClient);
         verify(salesOrderRepository, never()).save(any());
     }
 
     @Test
     void shouldThrowExceptionWhenNoWarehouseAvailable() {
-        // given
-        Customer customer = new Customer();
-        customer.setId(1L);
 
-        when(customerRepository.findById(anyLong()))
-                .thenReturn(Optional.of(customer));
+        CheckAvailabilityResponseDto availability = new CheckAvailabilityResponseDto();
+        availability.setWarehouseId(null);
 
-        CheckAvailabilityResponseDto response =
-                new CheckAvailabilityResponseDto();
-        response.setWarehouseId(null);
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(warehouseClient.checkAvailability(any())).thenReturn(availability);
 
-        when(warehouseWebClient.checkAvailability(any()))
-                .thenReturn(response);
-
-        CreateSalesOrderRequestDto request =
-                createSalesOrderRequest();
-
-        // when / then
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
-                () -> salesService.createSalesOrder(request)
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> salesOrderService.createSalesOrder(request)
         );
 
-        assertEquals(
-                "No warehouse can fulfill the requested order",
-                ex.getMessage()
-        );
+        assertEquals("No warehouse can fulfill the requested order", exception.getMessage());
 
+        // VERIFY
+        verify(warehouseClient).checkAvailability(any());
+        verify(warehouseClient, never()).createDispatchNote(any());
         verify(salesOrderRepository, never()).save(any());
-        verify(warehouseWebClient, never())
-                .createDispatchNote(any());
     }
 
 
     private CreateSalesOrderRequestDto createSalesOrderRequest() {
+
         CreateSalesOrderRequestDto request = new CreateSalesOrderRequestDto();
+
         request.setCustomerId(1L);
 
-        CreateSalesOrderRequestDto.CreateSalesOrderItemDto item =
-                new CreateSalesOrderRequestDto.CreateSalesOrderItemDto();
+        CreateSalesOrderRequestDto.CreateSalesOrderItemDto item = new CreateSalesOrderRequestDto.CreateSalesOrderItemDto();
 
         item.setProductId(101L);
         item.setQuantity(2);
@@ -156,7 +140,7 @@ class SalesServiceTest {
         item.setSellingPrice(BigDecimal.valueOf(100));
 
         request.setItems(List.of(item));
+
         return request;
     }
-
 }
