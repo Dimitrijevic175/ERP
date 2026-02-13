@@ -75,6 +75,7 @@ services:
       - WAREHOUSE_SERVICE_URL=http://warehouse-service:8084
     depends_on:
       - db
+      - warehouse-service
     networks:
       - erp-network
 
@@ -88,8 +89,11 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/warehouse_service_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=admin
+      - PRODUCT_SERVICE_URL=http://product-service:8081
+      - PROCUREMENT_SERVICE_URL=http://procurement-service:8082
     depends_on:
       - db
+      - product-service
     networks:
       - erp-network
 
