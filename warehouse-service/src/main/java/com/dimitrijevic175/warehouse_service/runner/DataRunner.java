@@ -7,6 +7,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -18,130 +19,104 @@ public class DataRunner implements CommandLineRunner {
     private final ReceiptNoteRepository receiptNoteRepository;
     private final DispatchNoteRepository dispatchNoteRepository;
 
-
     @Override
     public void run(String... args) {
+        if (warehouseRepository.count() > 0) return;
+
         // =========================
-        // WAREHOUSE
+        // WAREHOUSES
         // =========================
-        Warehouse warehouse = new Warehouse();
-        warehouse.setName("Glavni Magacin Beograd");
-        warehouse.setLocation("Bulevar Kralja Aleksandra 100");
-        warehouseRepository.save(warehouse);
-        // =========================
-        // SECOND WAREHOUSE
-        // =========================
+        Warehouse warehouse1 = new Warehouse();
+        warehouse1.setName("Glavni Magacin Beograd");
+        warehouse1.setLocation("Bulevar Kralja Aleksandra 100");
+        warehouseRepository.save(warehouse1);
+
         Warehouse warehouse2 = new Warehouse();
         warehouse2.setName("Pomoćni Magacin Novi Sad");
         warehouse2.setLocation("Industrijska zona bb, Novi Sad");
         warehouseRepository.save(warehouse2);
 
-        // =========================
-        // WAREHOUSE STOCK
-        // =========================
-        // Povezujemo sa Product ID iz product_service
-        WarehouseStock stock1 = new WarehouseStock();
-        stock1.setWarehouse(warehouse);
-        stock1.setProductId(1L); // Portland cement
-        stock1.setQuantity(9);
-
-        WarehouseStock stock2 = new WarehouseStock();
-        stock2.setWarehouse(warehouse);
-        stock2.setProductId(2L); // Rapid cement
-        stock2.setQuantity(50);
-
-        WarehouseStock stock3 = new WarehouseStock();
-        stock3.setWarehouse(warehouse);
-        stock3.setProductId(3L); // Betonski pesak
-        stock3.setQuantity(30);
+        Warehouse warehouse3 = new Warehouse();
+        warehouse3.setName("Magacin Kragujevac");
+        warehouse3.setLocation("Industrijska 5, Kragujevac");
+        warehouseRepository.save(warehouse3);
 
         // =========================
-        // WAREHOUSE 2 STOCK
+        // WAREHOUSE STOCK - po 10 proizvoda po magacinu
         // =========================
-        WarehouseStock stock4 = new WarehouseStock();
-        stock4.setWarehouse(warehouse2);
-        stock4.setProductId(1L); // Portland cement
-        stock4.setQuantity(1);
+        List<WarehouseStock> allStock = new ArrayList<>();
 
-        stockRepository.saveAll(List.of(stock1, stock2, stock3));
-        stockRepository.save(stock4);
-        // =========================
-        // RECEIPT NOTE
-        // =========================
-        ReceiptNote receiptNote = new ReceiptNote();
-        receiptNote.setPurchaseOrderId(101L);
-        receiptNote.setWarehouse(warehouse);
-        receiptNote.setStatus(ReceiptNoteStatus.DRAFT);
+        for (long productId = 1; productId <= 10; productId++) {
+            WarehouseStock ws1 = new WarehouseStock();
+            ws1.setWarehouse(warehouse1);
+            ws1.setProductId(productId);
+            ws1.setQuantity(50 + (int)(Math.random()*50));
+            allStock.add(ws1);
 
-        ReceiptNoteItem rItem1 = new ReceiptNoteItem();
-        rItem1.setReceiptNote(receiptNote);
-        rItem1.setProductId(1L);
-        rItem1.setOrderedQuantity(20);
-        rItem1.setReceivedQuantity(0);
-        rItem1.setPurchasePrice(new BigDecimal("4.50"));
+            WarehouseStock ws2 = new WarehouseStock();
+            ws2.setWarehouse(warehouse2);
+            ws2.setProductId(productId);
+            ws2.setQuantity(30 + (int)(Math.random()*40));
+            allStock.add(ws2);
 
-        ReceiptNoteItem rItem2 = new ReceiptNoteItem();
-        rItem2.setReceiptNote(receiptNote);
-        rItem2.setProductId(2L);
-        rItem2.setOrderedQuantity(10);
-        rItem2.setReceivedQuantity(0);
-        rItem2.setPurchasePrice(new BigDecimal("5.00"));
+            WarehouseStock ws3 = new WarehouseStock();
+            ws3.setWarehouse(warehouse3);
+            ws3.setProductId(productId);
+            ws3.setQuantity(20 + (int)(Math.random()*30));
+            allStock.add(ws3);
+        }
 
-        receiptNote.setItems(List.of(rItem1, rItem2));
-
-        receiptNoteRepository.save(receiptNote);
+        stockRepository.saveAll(allStock);
 
         // =========================
-        // DISPATCH NOTE
+        // RECEIPT NOTES - povezuju se sa stvarnim PurchaseOrder ID-jevima
         // =========================
-        DispatchNote dispatchNote = new DispatchNote();
-        dispatchNote.setSalesOrderId(201L);
-        dispatchNote.setWarehouse(warehouse);
-        dispatchNote.setStatus(DispatchNoteStatus.DRAFT);
+        long[] poIds = {1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L};
 
-        DispatchNoteItem dItem1 = new DispatchNoteItem();
-        dItem1.setDispatchNote(dispatchNote);
-        dItem1.setProductId(1L);
-        dItem1.setDispatchedQuantity(10);
-        dItem1.setSellingPrice(new BigDecimal("6.50"));
-        dItem1.setDiscount(new BigDecimal("0.50"));
-        dItem1.setTaxRate(new BigDecimal("20.00"));
+        for (int i = 0; i < poIds.length; i++) {
+            ReceiptNote rn = new ReceiptNote();
+            rn.setPurchaseOrderId(poIds[i]);
+            rn.setWarehouse(i % 3 == 0 ? warehouse1 : (i % 3 == 1 ? warehouse2 : warehouse3));
+            rn.setStatus(ReceiptNoteStatus.DRAFT);
 
-        DispatchNoteItem dItem2 = new DispatchNoteItem();
-        dItem2.setDispatchNote(dispatchNote);
-        dItem2.setProductId(2L);
-        dItem2.setDispatchedQuantity(5);
-        dItem2.setSellingPrice(new BigDecimal("7.00"));
-        dItem2.setDiscount(BigDecimal.ZERO);
-        dItem2.setTaxRate(new BigDecimal("20.00"));
-
-        dispatchNote.setItems(List.of(dItem1, dItem2));
-
-        dispatchNoteRepository.save(dispatchNote);
+            List<ReceiptNoteItem> items = new ArrayList<>();
+            for (long productId = 1; productId <= 3; productId++) { // svaka porudžbina ima 3 proizvoda
+                ReceiptNoteItem item = new ReceiptNoteItem();
+                item.setReceiptNote(rn);
+                item.setProductId(productId);
+                item.setOrderedQuantity(10 + (int)(Math.random()*20));
+                item.setReceivedQuantity(0);
+                item.setPurchasePrice(BigDecimal.valueOf(5 + Math.random()*5));
+                items.add(item);
+            }
+            rn.setItems(items);
+            receiptNoteRepository.save(rn);
+        }
 
         // =========================
-        // DISPATCH NOTE 2
+        // DISPATCH NOTES - demo sa random proizvodima
         // =========================
-        DispatchNote dispatchNote2 = new DispatchNote();
-        dispatchNote2.setSalesOrderId(202L);
-        dispatchNote2.setWarehouse(warehouse2);
-        dispatchNote2.setStatus(DispatchNoteStatus.DRAFT);
+        for (long soId = 201; soId <= 212; soId++) { // salesOrder IDs iz sales_service
+            DispatchNote dn = new DispatchNote();
+            dn.setSalesOrderId(soId);
+            dn.setWarehouse(soId % 3 == 0 ? warehouse1 : (soId % 3 == 1 ? warehouse2 : warehouse3));
+            dn.setStatus(DispatchNoteStatus.DRAFT);
 
-        DispatchNoteItem d2Item1 = new DispatchNoteItem();
-        d2Item1.setDispatchNote(dispatchNote2);
-        d2Item1.setProductId(1L);
-        d2Item1.setDispatchedQuantity(2);
-        d2Item1.setSellingPrice(new BigDecimal("6.80"));
+            List<DispatchNoteItem> dItems = new ArrayList<>();
+            for (long productId = 1; productId <= 3; productId++) {
+                DispatchNoteItem di = new DispatchNoteItem();
+                di.setDispatchNote(dn);
+                di.setProductId(productId);
+                di.setDispatchedQuantity(5 + (int)(Math.random()*15));
+                di.setSellingPrice(BigDecimal.valueOf(6 + Math.random()*5));
+                di.setDiscount(BigDecimal.valueOf(Math.random()*1));
+                di.setTaxRate(BigDecimal.valueOf(20.0));
+                dItems.add(di);
+            }
+            dn.setItems(dItems);
+            dispatchNoteRepository.save(dn);
+        }
 
-        DispatchNoteItem d2Item2 = new DispatchNoteItem();
-        d2Item2.setDispatchNote(dispatchNote2);
-        d2Item2.setProductId(3L);
-        d2Item2.setDispatchedQuantity(3);
-        d2Item2.setSellingPrice(new BigDecimal("5.50"));
-
-        dispatchNote2.setItems(List.of(d2Item1, d2Item2));
-        dispatchNoteRepository.save(dispatchNote2);
-
-        System.out.println("Warehouse initial data loaded successfully!");
+        System.out.println("Warehouse data loaded successfully with 3 warehouses, 10 products per warehouse, and realistic Receipt/Dispatch notes!");
     }
 }
