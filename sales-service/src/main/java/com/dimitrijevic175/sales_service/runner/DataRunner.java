@@ -21,71 +21,125 @@ public class DataRunner implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
-        // =========================
-        // CUSTOMER (firma)
-        // =========================
-        Customer companyCustomer = new Customer();
-        companyCustomer.setCustomerType(CustomerType.COMPANY);
-        companyCustomer.setCompanyName("ABC DOO");
-        companyCustomer.setContactPerson("Petar Petrović");
-        companyCustomer.setEmail("kontakt@abcdoo.rs");
-        companyCustomer.setPhone("+38164111222");
-        companyCustomer.setAddress("Bulevar Kralja Aleksandra 100, Beograd");
-        companyCustomer.setTaxNumber("109876543");
-        companyCustomer.setActive(true);
+        if (customerRepository.count() > 0) return;
 
-        customerRepository.save(companyCustomer);
+        // ================= CUSTOMERS =================
 
-        // =========================
-        // CUSTOMER (fizičko lice)
-        // =========================
-        Customer privateCustomer = new Customer();
-        privateCustomer.setCustomerType(CustomerType.INDIVIDUAL);
-        privateCustomer.setFirstName("Marko");
-        privateCustomer.setLastName("Marković");
-        privateCustomer.setEmail("marko.markovic@gmail.com");
-        privateCustomer.setPhone("+38163123456");
-        privateCustomer.setAddress("Nemanjina 5, Novi Sad");
-        privateCustomer.setActive(true);
+        Customer company1 = createCompany(
+                "ABC DOO",
+                "Petar Petrović",
+                "kontakt@abcdoo.rs",
+                "+38164111222",
+                "Bulevar Kralja Aleksandra 100, Beograd",
+                "109876543"
+        );
 
-        customerRepository.save(privateCustomer);
+        Customer individual1 = createIndividual(
+                "Marko",
+                "Marković",
+                "marko.markovic@gmail.com",
+                "+38163123456",
+                "Nemanjina 5, Novi Sad"
+        );
 
-        // =========================
-        // SALES ORDER
-        // =========================
-        SalesOrder salesOrder = new SalesOrder();
-        salesOrder.setWarehouseId(1L);
-        salesOrder.setCustomer(companyCustomer);
-        salesOrder.setStatus(SalesOrderStatus.CREATED);
+        Customer company2 = createCompany(
+                "Gradnja Invest DOO",
+                "Milan Ilić",
+                "info@gradnjainvest.rs",
+                "+381641223344",
+                "Cara Dušana 12, Niš",
+                "112233445"
+        );
 
-        // =========================
-        // SALES ORDER ITEMS
-        // =========================
-        SalesOrderItem item1 = new SalesOrderItem();
-        item1.setSalesOrder(salesOrder);
-        item1.setProductId(1001L);
-        item1.setQuantity(10);
-        item1.setDiscount(new BigDecimal("5.00"));
-        item1.setTaxRate(new BigDecimal("20.00"));
-        item1.setSellingPrice(new BigDecimal("1200.00"));
+        Customer individual2 = createIndividual(
+                "Jovan",
+                "Jovanović",
+                "jovan@gmail.com",
+                "+38163888777",
+                "Industrijska 7, Kragujevac"
+        );
 
-        SalesOrderItem item2 = new SalesOrderItem();
-        item2.setSalesOrder(salesOrder);
-        item2.setProductId(1002L);
-        item2.setQuantity(3);
-        item2.setDiscount(BigDecimal.ZERO);
-        item2.setTaxRate(new BigDecimal("20.00"));
-        item2.setSellingPrice(new BigDecimal("4500.00"));
+        // ================= SALES ORDERS (12) =================
 
-        salesOrder.setItems(List.of(item1, item2));
+        createOrder(1L, company1, SalesOrderStatus.CREATED, 1L, 20, 6.50);
+        createOrder(1L, company1, SalesOrderStatus.CREATED, 2L, 10, 7.00);
+        createOrder(2L, individual1, SalesOrderStatus.CLOSED, 3L, 5, 8.50);
+        createOrder(2L, individual1, SalesOrderStatus.CLOSED, 4L, 3, 30.00);
+        createOrder(3L, company2, SalesOrderStatus.CREATED, 5L, 2, 28.00);
+        createOrder(3L, company2, SalesOrderStatus.CLOSED, 6L, 4, 35.00);
+        createOrder(1L, individual2, SalesOrderStatus.CLOSED, 7L, 1000, 0.50);
+        createOrder(2L, company1, SalesOrderStatus.CREATED, 8L, 500, 0.65);
+        createOrder(1L, company2, SalesOrderStatus.CREATED, 9L, 150, 1.80);
+        createOrder(3L, individual1, SalesOrderStatus.CREATED, 10L, 200, 0.90);
+        createOrder(2L, company1, SalesOrderStatus.CLOSED, 11L, 300, 1.60);
+        createOrder(1L, individual2, SalesOrderStatus.CREATED, 12L, 50, 22.00);
 
-        salesOrderRepository.save(salesOrder);
+        System.out.println("12 Sales Orders i 4 Customer-a uspešno ubačeni!");
+    }
 
-        // =========================
-        // STATUS PROMENA (primer)
-        // =========================
-        salesOrder.setStatus(SalesOrderStatus.CREATED);
+    // ================= HELPER METODE =================
 
-        salesOrderRepository.save(salesOrder);
+    private Customer createCompany(String companyName,
+                                   String contactPerson,
+                                   String email,
+                                   String phone,
+                                   String address,
+                                   String taxNumber) {
+
+        Customer c = new Customer();
+        c.setCustomerType(CustomerType.COMPANY);
+        c.setCompanyName(companyName);
+        c.setContactPerson(contactPerson);
+        c.setEmail(email);
+        c.setPhone(phone);
+        c.setAddress(address);
+        c.setTaxNumber(taxNumber);
+        c.setActive(true);
+
+        return customerRepository.save(c);
+    }
+
+    private Customer createIndividual(String firstName,
+                                      String lastName,
+                                      String email,
+                                      String phone,
+                                      String address) {
+
+        Customer c = new Customer();
+        c.setCustomerType(CustomerType.INDIVIDUAL);
+        c.setFirstName(firstName);
+        c.setLastName(lastName);
+        c.setEmail(email);
+        c.setPhone(phone);
+        c.setAddress(address);
+        c.setActive(true);
+
+        return customerRepository.save(c);
+    }
+
+    private void createOrder(Long warehouseId,
+                             Customer customer,
+                             SalesOrderStatus status,
+                             Long productId,
+                             int quantity,
+                             double sellingPrice) {
+
+        SalesOrder order = new SalesOrder();
+        order.setWarehouseId(warehouseId);
+        order.setCustomer(customer);
+        order.setStatus(status);
+        order.setCreatedAt(LocalDateTime.now().minusDays((long) (Math.random() * 20)));
+
+        SalesOrderItem item = new SalesOrderItem();
+        item.setSalesOrder(order);
+        item.setProductId(productId);
+        item.setQuantity(quantity);
+        item.setDiscount(BigDecimal.ZERO);
+        item.setTaxRate(new BigDecimal("20.00"));
+        item.setSellingPrice(BigDecimal.valueOf(sellingPrice));
+
+        order.setItems(List.of(item));
+
+        salesOrderRepository.save(order);
     }
 }

@@ -53,7 +53,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/procurement_service_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=admin
-      - PRODUCT_SERVICE_URL=http://product-service:8081  # KORISTI IME SERVISA
+      - PRODUCT_SERVICE_URL=http://product-service:8081
       - WAREHOUSE_SERVICE_URL=http://warehouse-service:8084
     depends_on:
       - db

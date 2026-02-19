@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -20,77 +22,161 @@ public class DataRunner {
     @PostConstruct
     public void initData() {
 
-        // ====== Supplier 1 ======
-        Supplier supplier1 = new Supplier();
-        supplier1.setName("ABC Logistics d.o.o.");
-        supplier1.setAddress("Bulevar Kralja Aleksandra 123, Beograd");
-        supplier1.setTaxNumber("123456789");
-        supplier1.setRegistrationNumber("98765432");
-        supplier1.setActive(true);
+        if (supplierRepository.count() > 0) return;
 
-        SupplierContact contact1 = new SupplierContact();
-        contact1.setFullName("Marko Marković");
-        contact1.setEmail("markomarkovic@abc.rs");
-        contact1.setPhone("+381641234567");
-        contact1.setSupplier(supplier1);
+        // ================= SUPPLIERS =================
+        Supplier supplier1 = createSupplier(
+                "ABC Logistics d.o.o.",
+                "Bulevar Kralja Aleksandra 123, Beograd",
+                "123456789",
+                "98765432",
+                "Marko Marković",
+                "marko@abc.rs",
+                "+381641234567"
+        );
 
-        supplier1.setContacts(java.util.List.of(contact1));
+        Supplier supplier2 = createSupplier(
+                "XYZ Trade d.o.o.",
+                "Nemanjina 45, Novi Sad",
+                "987654321",
+                "12345678",
+                "Jelena Jovanović",
+                "jelena@xyz.rs",
+                "+381641112233"
+        );
 
-        supplierRepository.save(supplier1);
+        Supplier supplier3 = createSupplier(
+                "Gradnja Promet d.o.o.",
+                "Cara Dušana 77, Niš",
+                "555666777",
+                "22233344",
+                "Nikola Petrović",
+                "nikola@gradnja.rs",
+                "+381642223334"
+        );
 
-        // ====== Supplier 2 ======
-        Supplier supplier2 = new Supplier();
-        supplier2.setName("XYZ Trade doo");
-        supplier2.setAddress("Nemanjina 45, Novi Sad");
-        supplier2.setTaxNumber("987654321");
-        supplier2.setRegistrationNumber("12345678");
-        supplier2.setActive(true);
+        Supplier supplier4 = createSupplier(
+                "Metal Invest d.o.o.",
+                "Industrijska zona bb, Kragujevac",
+                "444555666",
+                "11122233",
+                "Ivana Ilić",
+                "ivana@metalinvest.rs",
+                "+381645556667"
+        );
 
-        SupplierContact contact2 = new SupplierContact();
-        contact2.setFullName("Jelena Jovanović");
-        contact2.setEmail("jelena@xyz.rs");
-        contact2.setPhone("+381641112233");
-        contact2.setSupplier(supplier2);
+        // ================= PURCHASE ORDERS =================
+        createPO(1L, supplier1, PurchaseOrderStatus.RECEIVED, List.of(
+                new ProductData(1L, 50, 4.50),
+                new ProductData(2L, 40, 5.00)
+        ));
 
-        supplier2.setContacts(java.util.List.of(contact2));
+        createPO(2L, supplier2, PurchaseOrderStatus.SUBMITTED, List.of(
+                new ProductData(3L, 25, 6.00),
+                new ProductData(4L, 10, 20.00)
+        ));
 
-        supplierRepository.save(supplier2);
+        createPO(3L, supplier3, PurchaseOrderStatus.RECEIVED, List.of(
+                new ProductData(5L, 15, 18.00),
+                new ProductData(6L, 20, 25.00)
+        ));
 
-        // ====== PurchaseOrder 1 ======
-        PurchaseOrder po1 = new PurchaseOrder();
-        po1.setWarehouseId(1L); // primer warehouse ID
-        po1.setSupplier(supplier1);
-        po1.setStatus(PurchaseOrderStatus.RECEIVED);
-        po1.setReceivedAt(LocalDateTime.now());
-        po1.setSubmittedAt(LocalDateTime.of(2025,12,14,12,0,0));
+        createPO(1L, supplier4, PurchaseOrderStatus.SUBMITTED, List.of(
+                new ProductData(7L, 500, 0.30)
+        ));
 
-        PurchaseOrderItem item1 = new PurchaseOrderItem();
-        item1.setProductId(1L);
-        item1.setQuantity(10);
-        item1.setPurchasePrice(new BigDecimal("125.50"));
-        item1.setPurchaseOrder(po1);
+        createPO(2L, supplier4, PurchaseOrderStatus.RECEIVED, List.of(
+                new ProductData(8L, 600, 0.40)
+        ));
 
-        po1.setItems(java.util.List.of(item1));
+        createPO(1L, supplier1, PurchaseOrderStatus.CLOSED, List.of(
+                new ProductData(9L, 200, 1.20)
+        ));
 
-        purchaseOrderRepository.save(po1);
+        createPO(3L, supplier2, PurchaseOrderStatus.RECEIVED, List.of(
+                new ProductData(10L, 1000, 0.60)
+        ));
 
-        // ====== PurchaseOrder 2 ======
-        PurchaseOrder po2 = new PurchaseOrder();
-        po2.setWarehouseId(2L);
-        po2.setSupplier(supplier2);
-        po2.setStatus(PurchaseOrderStatus.SUBMITTED);
-        po2.setSubmittedAt(LocalDateTime.of(2025,4,3,9,30,0));
+        createPO(2L, supplier3, PurchaseOrderStatus.SUBMITTED, List.of(
+                new ProductData(11L, 800, 1.10)
+        ));
 
-        PurchaseOrderItem item2 = new PurchaseOrderItem();
-        item2.setProductId(2L);
-        item2.setQuantity(5);
-        item2.setPurchasePrice(new BigDecimal("250.00"));
-        item2.setPurchaseOrder(po2);
+        createPO(1L, supplier4, PurchaseOrderStatus.RECEIVED, List.of(
+                new ProductData(12L, 120, 15.00)
+        ));
 
-        po2.setItems(java.util.List.of(item2));
+        System.out.println("Purchase Orders i Supplier-i uspešno ubačeni!");
+    }
 
-        purchaseOrderRepository.save(po2);
+    // ================= HELPER METODE =================
 
-        System.out.println("Mokovani podaci za Supplier i PurchaseOrder ubaceni u bazu!");
+    private Supplier createSupplier(String name, String address,
+                                    String taxNumber, String regNumber,
+                                    String contactName, String email, String phone) {
+
+        Supplier supplier = new Supplier();
+        supplier.setName(name);
+        supplier.setAddress(address);
+        supplier.setTaxNumber(taxNumber);
+        supplier.setRegistrationNumber(regNumber);
+        supplier.setActive(true);
+
+        SupplierContact contact = new SupplierContact();
+        contact.setFullName(contactName);
+        contact.setEmail(email);
+        contact.setPhone(phone);
+        contact.setSupplier(supplier);
+
+        supplier.setContacts(List.of(contact));
+
+        return supplierRepository.save(supplier);
+    }
+
+    /**
+     * Kreira Purchase Order sa više proizvoda
+     */
+    private void createPO(Long warehouseId,
+                          Supplier supplier,
+                          PurchaseOrderStatus status,
+                          List<ProductData> products) {
+
+        PurchaseOrder po = new PurchaseOrder();
+        po.setWarehouseId(warehouseId);
+        po.setSupplier(supplier);
+        po.setStatus(status);
+        po.setSubmittedAt(LocalDateTime.now().minusDays((long) (Math.random() * 30)));
+
+        if (status == PurchaseOrderStatus.RECEIVED) {
+            po.setReceivedAt(LocalDateTime.now());
+        }
+
+        List<PurchaseOrderItem> items = new ArrayList<>();
+        for (ProductData p : products) {
+            PurchaseOrderItem item = new PurchaseOrderItem();
+            item.setProductId(p.productId);
+            item.setQuantity(p.quantity);
+            item.setPurchasePrice(BigDecimal.valueOf(p.purchasePrice));
+            item.setPurchaseOrder(po);
+            items.add(item);
+        }
+
+        po.setItems(items);
+
+        purchaseOrderRepository.save(po);
+    }
+
+    /**
+     * Helper klasa za inicijalizaciju proizvoda u PO
+     */
+    private static class ProductData {
+        private final Long productId;
+        private final int quantity;
+        private final double purchasePrice;
+
+        public ProductData(Long productId, int quantity, double purchasePrice) {
+            this.productId = productId;
+            this.quantity = quantity;
+            this.purchasePrice = purchasePrice;
+        }
     }
 }

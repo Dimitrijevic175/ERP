@@ -16,7 +16,7 @@ public class ProductClient {
 
     public ProductInfoDto getProductById(Long productId) {
         return productWebClient.get()
-                .uri("/{productId}", productId)
+                .uri("/product/{productId}", productId)
                 .retrieve()
                 .bodyToMono(ProductInfoDto.class)
                 .block();
@@ -25,7 +25,7 @@ public class ProductClient {
     // nova metoda za ProductDto
     public ProductDto getFullProductById(Long productId) {
         return productWebClient.get()
-                .uri("/{productId}", productId)
+                .uri("/product/{productId}", productId)
                 .retrieve()
                 .bodyToMono(ProductDto.class)
                 .block();
