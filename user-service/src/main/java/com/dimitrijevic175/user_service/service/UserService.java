@@ -13,6 +13,7 @@ public interface UserService {
     Page<UserResponse> getUsers(String email, String firstName, String lastName, RoleName roleName, Boolean active, Pageable pageable);
     UserResponse getUserById(Long id);
     UserResponse updateUser(Long id, UserUpdateRequest request);
+    void verifyPassword(Long userId, String oldPassword);
     UserResponse updatePassword(Long userId, String newPassword);
     void deleteUser(Long id, Long requesterId);
 
