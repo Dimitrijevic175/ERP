@@ -8,10 +8,7 @@ import com.dimitrijevic175.user_service.domain.User;
 import com.dimitrijevic175.user_service.dto.CreateUserRequest;
 import com.dimitrijevic175.user_service.dto.UserResponse;
 import com.dimitrijevic175.user_service.dto.UserUpdateRequest;
-import com.dimitrijevic175.user_service.exceptions.EmailAlreadyExistsException;
-import com.dimitrijevic175.user_service.exceptions.RoleNotFoundException;
-import com.dimitrijevic175.user_service.exceptions.SelfDeletionException;
-import com.dimitrijevic175.user_service.exceptions.UserNotFoundException;
+import com.dimitrijevic175.user_service.exceptions.*;
 import com.dimitrijevic175.user_service.mapper.UserMapper;
 import com.dimitrijevic175.user_service.repository.RoleRepository;
 import com.dimitrijevic175.user_service.repository.UserRepository;
@@ -147,6 +144,18 @@ public class UserServiceImpl implements UserService {
         User updated = userRepository.save(user);
         log.info("User with ID '{}' updated successfully", id);
         return UserMapper.toResponse(updated);
+    }
+
+    @Transactional
+    public void verifyPassword(Long userId, String oldPassword) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+
+        if (!PasswordUtil.checkPassword(oldPassword, user.getPassword())) {
+            throw new InvalidPasswordException();
+        }
+
     }
 
     @Override

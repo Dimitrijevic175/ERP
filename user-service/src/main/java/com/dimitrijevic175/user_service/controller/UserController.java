@@ -1,10 +1,7 @@
 package com.dimitrijevic175.user_service.controller;
 
 import com.dimitrijevic175.user_service.domain.RoleName;
-import com.dimitrijevic175.user_service.dto.CreateUserRequest;
-import com.dimitrijevic175.user_service.dto.UpdatePasswordRequest;
-import com.dimitrijevic175.user_service.dto.UserResponse;
-import com.dimitrijevic175.user_service.dto.UserUpdateRequest;
+import com.dimitrijevic175.user_service.dto.*;
 import com.dimitrijevic175.user_service.security.CheckSecurity;
 import com.dimitrijevic175.user_service.security.TokenService;
 import com.dimitrijevic175.user_service.service.UserService;
@@ -62,8 +59,16 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{id}/verify-password")
+    public ResponseEntity<Void> verifyPassword(
+            @PathVariable Long id,
+            @Valid @RequestBody VerifyPasswordRequest request
+    ) {
+        userService.verifyPassword(id, request.getOldPassword());
+        return ResponseEntity.ok().build();
+    }
+
     @PutMapping("/{id}/password")
-    @CheckSecurity(roles = {"ADMIN"})
     public ResponseEntity<UserResponse> updatePassword(
             @PathVariable Long id,
             @Valid @RequestBody UpdatePasswordRequest request
