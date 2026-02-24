@@ -60,8 +60,8 @@ Set up necessary data in the application.properties file inside the resources fo
 server.port=8080
 
 spring.datasource.url=jdbc:postgresql://localhost:5432/user_service_db
-spring.datasource.username=postgres
-spring.datasource.password=
+spring.datasource.username=YOUR_DATABASE_USERNAME
+spring.datasource.password=YOUR_DATABSE_PASSWORD
 spring.datasource.driver-class-name=org.postgresql.Driver
 spring.jpa.hibernate.ddl-auto=create-drop
 spring.jpa.show-sql=true
