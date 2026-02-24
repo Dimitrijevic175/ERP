@@ -52,7 +52,28 @@ cd ERP
 
 ---
 
-### 2. Launch the System
+### 2. Set up the environment
+
+Set up necessary data in the application.properties file inside the resources folder of each service. You can use an example file application-example.properties as a template. It should look like this:
+
+```bash
+server.port=8080
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/user_service_db
+spring.datasource.username=postgres
+spring.datasource.password=
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+
+oauth.jwt.secret=YOUR_SECRET_KEY_GOES_HERE
+```
+To set up authorization, run the JwtKeyGenerator class inside the user service to generate a secret key, then copy the output from the console into your application.properties file.  
+
+**REPEAT THIS STEP FOR EACH SERVICE.**
+
+
+### 3. Launch the System
 
 The entire infrastructure is automated using Docker Compose.
 
@@ -71,7 +92,7 @@ This command will:
 
 ---
 
-### 3. Verify Running Containers
+### 4. Verify Running Containers
 
 After startup logs stabilize, verify that all containers are running:
 
@@ -103,11 +124,11 @@ The system uses a single PostgreSQL container that automatically creates **5 sep
 
 After successful startup, services are available at:
 
-* User Service: [http://localhost:8080](http://localhost:8080)
-* Product Service: [http://localhost:8081](http://localhost:8081)
-* Procurement Service: [http://localhost:8082](http://localhost:8082)
-* Sales Service: [http://localhost:8083](http://localhost:8083)
-* Warehouse Service: [http://localhost:8084](http://localhost:8084)
+* User Service: [8080]
+* Product Service: [8081]
+* Procurement Service: [8082]
+* Sales Service: [8083]
+* Warehouse Service: [8084]
 
 ---
 
