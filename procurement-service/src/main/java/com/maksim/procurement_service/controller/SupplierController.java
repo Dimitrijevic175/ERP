@@ -1,6 +1,7 @@
 package com.maksim.procurement_service.controller;
 
 import com.maksim.procurement_service.dto.supplier.*;
+import com.maksim.procurement_service.security.CheckSecurity;
 import com.maksim.procurement_service.service.SupplierService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 public class SupplierController {
 
     private final SupplierService supplierService;
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @PostMapping
     public ResponseEntity<SupplierResponseDto> createSupplier(
             @RequestBody SupplierCreateRequestDto request
@@ -23,21 +24,21 @@ public class SupplierController {
                 supplierService.createSupplier(request)
         );
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping
     public ResponseEntity<List<SupplierResponseDto>> getAllSuppliers() {
         return ResponseEntity.ok(
                 supplierService.getAllSuppliers()
         );
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping("/{id}")
     public ResponseEntity<SupplierResponseDto> getSupplierById(@PathVariable Long id) {
         return ResponseEntity.ok(
                 supplierService.getSupplierById(id)
         );
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @PutMapping("/{id}")
     public ResponseEntity<SupplierResponseDto> updateSupplier(
             @PathVariable Long id,
@@ -47,7 +48,7 @@ public class SupplierController {
                 supplierService.updateSupplier(id, request)
         );
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSupplier(@PathVariable Long id) {
         supplierService.deleteSupplier(id);

@@ -2,6 +2,7 @@ package com.dimitrijevic175.product_service.controller;
 
 import com.dimitrijevic175.product_service.domain.Product;
 import com.dimitrijevic175.product_service.dto.*;
+import com.dimitrijevic175.product_service.security.CheckSecurity;
 import com.dimitrijevic175.product_service.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -21,12 +22,12 @@ public class ProductController {
     public ProductController(ProductService productService) {
         this.productService = productService;
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PRODUCT"})
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody CreateProductRequest request) {
         return ResponseEntity.ok(productService.createProduct(request));
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping("/{id}/minQuantity")
     public ResponseEntity<Integer> getProductMinQuantity(@PathVariable Long id) {
         Integer minQuantity = productService.getMinQuantity(id);
@@ -36,18 +37,19 @@ public class ProductController {
         return ResponseEntity.ok(minQuantity);
     }
 
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
         ProductResponse response = productService.getProductById(id);
         return ResponseEntity.ok(response);
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PRODUCT"})
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductUpdateRequest request) {
         ProductResponse response = productService.updateProduct(id, request);
         return ResponseEntity.ok(response);
     }
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PRODUCT"})
     @PutMapping("/{id}/status")
     public ResponseEntity<ProductResponse> updateProductStatus(
             @PathVariable Long id,
@@ -55,7 +57,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProductStatus(id, request.getActive()));
     }
 
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> getProducts(
             @RequestParam(required = false) String name,
@@ -78,7 +80,7 @@ public class ProductController {
 
         return ResponseEntity.ok(productService.getProducts(req, pageable));
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PRODUCT"})
     @PostMapping("/import")
     public ResponseEntity<ImportResult> importProducts(@RequestParam("file") MultipartFile file) {
         ImportResult result = productService.importProducts(file);

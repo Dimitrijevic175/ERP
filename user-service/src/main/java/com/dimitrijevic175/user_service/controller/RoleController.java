@@ -29,7 +29,7 @@ public class RoleController {
         return ResponseEntity.ok(roles);
     }
 
-    // POST /roles – only admin
+
     @PostMapping
     @CheckSecurity(roles = {"ADMIN"})
     public ResponseEntity<Role> createRole(@Valid @RequestBody CreateRoleRequest request) {
