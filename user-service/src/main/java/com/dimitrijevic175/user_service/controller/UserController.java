@@ -44,7 +44,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUsers(email, firstName, lastName, roleName, active, pageable));
     }
 
-    @CheckSecurity(roles = {"ADMIN"})
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         UserResponse userResponse = userService.getUserById(id);
@@ -58,7 +58,7 @@ public class UserController {
         UserResponse response = userService.updateUser(id, request);
         return ResponseEntity.ok(response);
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @PutMapping("/{id}/verify-password")
     public ResponseEntity<Void> verifyPassword(
             @PathVariable Long id,
@@ -67,7 +67,7 @@ public class UserController {
         userService.verifyPassword(id, request.getOldPassword());
         return ResponseEntity.ok().build();
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @PutMapping("/{id}/password")
     public ResponseEntity<UserResponse> updatePassword(
             @PathVariable Long id,

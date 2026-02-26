@@ -4,6 +4,7 @@ import com.maksim.procurement_service.domain.PurchaseOrder;
 import com.maksim.procurement_service.domain.PurchaseOrderStatus;
 import com.maksim.procurement_service.dto.*;
 import com.maksim.procurement_service.repository.PurchaseOrderRepository;
+import com.maksim.procurement_service.security.CheckSecurity;
 import com.maksim.procurement_service.service.PurchaseOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -21,7 +22,7 @@ public class PurchaseOrderController {
     private final PurchaseOrderService purchaseOrderService;
     private final PurchaseOrderRepository purchaseOrderRepository;
 
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping
     public ResponseEntity<Page<PurchaseOrderDto>> getAllPurchaseOrders(
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
@@ -33,14 +34,14 @@ public class PurchaseOrderController {
     }
 
 
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping("/{id}")
     public ResponseEntity<PurchaseOrderDto> getPurchaseOrderById(@PathVariable Long id) {
         return ResponseEntity.ok(
                 purchaseOrderService.getPurchaseOrderById(id)
         );
     }
-
+    @CheckSecurity(roles = {"ADMIN","PROCUREMENT"})
     @PostMapping
     public ResponseEntity<PurchaseOrderResponseDto> createAutoPurchaseOrder(
             @RequestBody CreatePurchaseOrderRequestDto request
@@ -48,13 +49,13 @@ public class PurchaseOrderController {
         PurchaseOrderResponseDto response = purchaseOrderService.createAutoPurchaseOrder(request);
         return ResponseEntity.ok(response);
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @PostMapping("/{id}/submit")
     public ResponseEntity<String> submitPurchaseOrder(@PathVariable Long id) {
         String pdfFile = purchaseOrderService.submitPurchaseOrder(id);
         return ResponseEntity.ok(pdfFile);
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @GetMapping("/{id}/confirm")
     public ResponseEntity<String> confirmPurchaseOrder(@PathVariable Long id) {
         PurchaseOrder po = purchaseOrderRepository.findById(id)
@@ -69,7 +70,7 @@ public class PurchaseOrderController {
 
         return ResponseEntity.ok("Purchase order confirmed successfully");
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @GetMapping("/{id}/close")
     public ResponseEntity<String> closePurchaseOrder(@PathVariable Long id) {
         PurchaseOrder po = purchaseOrderRepository.findById(id)
@@ -84,7 +85,7 @@ public class PurchaseOrderController {
 
         return ResponseEntity.ok("Purchase order closed successfully");
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @PostMapping("/{id}/receive")
     public ResponseEntity<String> receivePurchaseOrder(@PathVariable Long id) {
         purchaseOrderService.receivePurchaseOrder(id);

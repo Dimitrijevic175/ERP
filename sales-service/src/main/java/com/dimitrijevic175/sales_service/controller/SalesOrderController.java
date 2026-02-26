@@ -3,6 +3,7 @@ package com.dimitrijevic175.sales_service.controller;
 import com.dimitrijevic175.sales_service.dto.CreateSalesOrderRequestDto;
 import com.dimitrijevic175.sales_service.dto.SalesOrderDto;
 import com.dimitrijevic175.sales_service.dto.SalesOrderResponseDto;
+import com.dimitrijevic175.sales_service.security.CheckSecurity;
 import com.dimitrijevic175.sales_service.service.SalesOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class SalesOrderController {
 
     private final SalesOrderService salesOrderService;
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","SALES"})
     @PostMapping
     public ResponseEntity<SalesOrderResponseDto> createOrder(
             @RequestBody CreateSalesOrderRequestDto request
@@ -26,13 +27,13 @@ public class SalesOrderController {
         SalesOrderResponseDto response = salesOrderService.createSalesOrder(request);
         return ResponseEntity.ok(response);
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","SALES"})
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
         salesOrderService.cancelOrder(orderId);
         return ResponseEntity.noContent().build();
     }
-
+    @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT","SALES","PRODUCT"})
     @GetMapping
     public ResponseEntity<Page<SalesOrderDto>> getAllSalesOrders(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
