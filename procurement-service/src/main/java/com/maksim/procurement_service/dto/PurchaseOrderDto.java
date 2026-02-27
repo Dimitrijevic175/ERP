@@ -13,4 +13,7 @@ public class PurchaseOrderDto {
     private PurchaseOrderStatus status;
     private LocalDateTime createdAt;
     private Long supplierId;
+    private Long warehouseId;
+    private String supplierName;
+    private String warehouseName;
 }
