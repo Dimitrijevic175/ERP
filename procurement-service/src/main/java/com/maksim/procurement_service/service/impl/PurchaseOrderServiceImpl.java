@@ -60,7 +60,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
         List<LowStockItemDto> lowStockItems = warehouseClient.getLowStock(request.getWarehouseId());
 
-
         logger.debug("Fetched {} low-stock items from warehouseId={}", lowStockItems != null ? lowStockItems.size() : 0, request.getWarehouseId());
 
         PurchaseOrder po = new PurchaseOrder();
@@ -94,6 +93,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         po = purchaseOrderRepository.save(po);
         logger.info("Auto purchase order created with id={}", po.getId());
 
+        WarehouseDto warehouse = warehouseClient.getWarehouseById(request.getWarehouseId());
+
         PurchaseOrderResponseDto response = new PurchaseOrderResponseDto();
         response.setId(po.getId());
         response.setWarehouseId(po.getWarehouseId());
@@ -110,6 +111,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             dto.setProductName(prodInfo != null ? prodInfo.getName() : null);
             return dto;
         }).collect(Collectors.toList()));
+        response.setWarehouseName(warehouse.getName());
 
         logger.debug("Purchase order response prepared for id={}", po.getId());
 
@@ -251,6 +253,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     return new RuntimeException("Purchase order not found");
                 });
 
+        WarehouseDto warehouse = warehouseClient.getWarehouseById(po.getWarehouseId());
+
         PurchaseOrderDto dto = new PurchaseOrderDto();
         dto.setId(po.getId());
         dto.setItems(po.getItems().stream().map(item -> {
@@ -258,8 +262,16 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             i.setProductId(item.getProductId());
             i.setQuantity(item.getQuantity());
             i.setPurchasePrice(item.getPurchasePrice());
+            ProductInfoDto productInfo = productClient.getProductById(item.getProductId());
+            i.setProductName(productInfo.getName());
             return i;
         }).collect(Collectors.toList()));
+        dto.setSupplierId(po.getSupplier().getId());
+        dto.setWarehouseId(po.getWarehouseId());
+        dto.setSupplierName(po.getSupplier().getName());
+        dto.setWarehouseName(warehouse.getName());
+        dto.setStatus(po.getStatus());
+        dto.setCreatedAt(po.getCreatedAt());
 
         logger.debug("Fetched purchase order id={} with {} items", id, dto.getItems().size());
         return dto;

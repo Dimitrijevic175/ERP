@@ -13,4 +13,5 @@ public class PurchaseOrderResponseDto {
     private String status;
     private LocalDateTime createdAt;
     private List<PurchaseOrderItemDto> items;
+    private String warehouseName;
 }

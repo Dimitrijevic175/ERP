@@ -58,7 +58,7 @@ public class DataRunner implements CommandLineRunner {
 
         // CEMENT (3)
         productRepository.save(createProduct("Portland cement 25kg", "CEM-PORT-25",
-                "Standardni Portland cement", cement, "Cemex", 4.5, 6.5, 10, 500, "kom"));
+                "Standardni Portland cement", cement, "Cemex", 4.5, 6.5, 10, 100, "kom"));
 
         productRepository.save(createProduct("Rapid cement 25kg", "CEM-RAP-25",
                 "Brzovezujući cement", cement, "Heidelberg", 5.0, 7.0, 5, 300, "kom"));
@@ -78,33 +78,33 @@ public class DataRunner implements CommandLineRunner {
 
         // CIGLA (3)
         productRepository.save(createProduct("Puna cigla", "BRICK-PUN-01",
-                "Standardna puna cigla", bricks, "Tondach", 0.30, 0.50, 500, 10000, "kom"));
+                "Standardna puna cigla", bricks, "Tondach", 0.30, 0.50, 500, 100, "kom"));
 
         productRepository.save(createProduct("Šuplja cigla", "BRICK-SUP-01",
-                "Šuplja cigla za zidanje", bricks, "Wienerberger", 0.40, 0.65, 500, 10000, "kom"));
+                "Šuplja cigla za zidanje", bricks, "Wienerberger", 0.40, 0.65, 500, 100, "kom"));
 
         productRepository.save(createProduct("Blok cigla 25cm", "BRICK-BLO-25",
-                "Blok za noseće zidove", bricks, "YTONG", 1.20, 1.80, 200, 5000, "kom"));
+                "Blok za noseće zidove", bricks, "YTONG", 1.20, 1.80, 200, 100, "kom"));
 
         // ARMATURA (3)
         productRepository.save(createProduct("Armatura fi8", "REB-08",
-                "Čelična šipka fi8", rebar, "Metalac", 0.60, 0.90, 100, 5000, "m"));
+                "Čelična šipka fi8", rebar, "Metalac", 0.60, 0.90, 100, 100, "m"));
 
         productRepository.save(createProduct("Armatura fi12", "REB-12",
-                "Čelična šipka fi12", rebar, "Metalac", 1.10, 1.60, 100, 5000, "m"));
+                "Čelična šipka fi12", rebar, "Metalac", 1.10, 1.60, 100, 100, "m"));
 
         productRepository.save(createProduct("Armaturna mreža 6mm", "REB-MR-6",
-                "Zavarena armaturna mreža", rebar, "MetalPro", 15, 22, 10, 500, "kom"));
+                "Zavarena armaturna mreža", rebar, "MetalPro", 15, 22, 10, 100, "kom"));
 
         // IZOLACIJA (3)
         productRepository.save(createProduct("Stiropor 5cm", "INS-STI-5",
-                "EPS termoizolacija 5cm", insulation, "Austrotherm", 3.5, 5.5, 50, 2000, "m2"));
+                "EPS termoizolacija 5cm", insulation, "Austrotherm", 3.5, 5.5, 50, 100, "m2"));
 
         productRepository.save(createProduct("Kamena vuna 10cm", "INS-VUN-10",
-                "Toplotna izolacija", insulation, "Knauf", 6, 9, 30, 1500, "m2"));
+                "Toplotna izolacija", insulation, "Knauf", 6, 9, 30, 100, "m2"));
 
         productRepository.save(createProduct("Hidroizolaciona folija", "INS-HYD-01",
-                "PVC hidro folija", insulation, "Sika", 2, 3.5, 50, 3000, "m2"));
+                "PVC hidro folija", insulation, "Sika", 2, 3.5, 50, 100, "m2"));
 
         System.out.println("Initial data loaded successfully with 15 products and 5 categories!");
     }
