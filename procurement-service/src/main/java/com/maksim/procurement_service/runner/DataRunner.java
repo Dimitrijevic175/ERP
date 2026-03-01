@@ -31,7 +31,7 @@ public class DataRunner {
                 "123456789",
                 "98765432",
                 "Marko Marković",
-                "marko@abc.rs",
+                "malidima97@gmail.com",
                 "+381641234567"
         );
 

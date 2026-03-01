@@ -59,6 +59,8 @@ services:
       - db
       - product-service
       - warehouse-service
+    volumes:
+      - ./pdfs:/app/pdfs  # mapira host folder ERP/pdfs na /app/pdfs unutar kontejnera
     networks:
       - erp-network
 
