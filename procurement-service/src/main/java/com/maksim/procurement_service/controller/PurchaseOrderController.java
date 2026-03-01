@@ -51,10 +51,14 @@ public class PurchaseOrderController {
     }
     @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @PostMapping("/{id}/submit")
-    public ResponseEntity<String> submitPurchaseOrder(@PathVariable Long id) {
-        String pdfFile = purchaseOrderService.submitPurchaseOrder(id);
-        return ResponseEntity.ok(pdfFile);
+    public ResponseEntity<PurchaseOrderSubmitResponse > submitPurchaseOrder(
+            @PathVariable Long id,
+            @RequestBody SubmitPurchaseOrderRequest request
+    ) {
+         PurchaseOrderSubmitResponse result = purchaseOrderService.submitPurchaseOrder(id, request);
+        return ResponseEntity.ok(result);
     }
+
     @CheckSecurity(roles = {"ADMIN","WAREHOUSE","PROCUREMENT"})
     @GetMapping("/{id}/confirm")
     public ResponseEntity<String> confirmPurchaseOrder(@PathVariable Long id) {

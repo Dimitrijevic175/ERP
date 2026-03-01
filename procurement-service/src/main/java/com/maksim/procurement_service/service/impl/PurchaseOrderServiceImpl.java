@@ -21,7 +21,11 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -129,56 +133,43 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
 
     @Override
     @Transactional
-    public String submitPurchaseOrder(Long purchaseOrderId) {
+    public PurchaseOrderSubmitResponse submitPurchaseOrder(Long purchaseOrderId, SubmitPurchaseOrderRequest request) {
+
         logger.info("Submitting purchase order id={}", purchaseOrderId);
+
         PurchaseOrder po = purchaseOrderRepository.findById(purchaseOrderId)
-                .orElseThrow(() -> {
-                    logger.error("Purchase order not found id={}", purchaseOrderId);
-                    return new RuntimeException("Purchase Order not found");
-                });
+                .orElseThrow(() -> new RuntimeException("Purchase Order not found"));
 
         if (po.getStatus() != PurchaseOrderStatus.DRAFT) {
-            logger.error("Purchase order id={} already submitted or closed. Status={}", purchaseOrderId, po.getStatus());
             throw new RuntimeException("Purchase order already submitted or closed");
         }
 
-        List<LowStockItemDto> lowStockItems = warehouseClient.getLowStock(po.getWarehouseId());
+        po.getItems().clear();
 
-
-        logger.debug("Fetched {} low-stock items for PO id={}", lowStockItems != null ? lowStockItems.size() : 0, po.getId());
-
-        if (lowStockItems != null) {
-            for (LowStockItemDto item : lowStockItems) {
-                boolean exists = po.getItems().stream()
-                        .anyMatch(i -> i.getProductId().equals(item.getProductId()));
-                if (exists) continue;
-
-                ProductInfoDto product = productClient.getProductById(item.getProductId());
-
-
-                if (product == null) {
-                    logger.warn("Product info not found for productId={} during submit", item.getProductId());
-                    continue;
-                }
-
-                PurchaseOrderItem poItem = new PurchaseOrderItem();
-                poItem.setPurchaseOrder(po);
-                poItem.setProductId(item.getProductId());
-                poItem.setQuantity(product.getMaxQuantity());
-                poItem.setPurchasePrice(product.getPurchasePrice());
-                po.getItems().add(poItem);
-            }
+        for (PurchaseOrderItemDto itemRequest : request.getItems()) {
+            PurchaseOrderItem item = new PurchaseOrderItem();
+            item.setPurchaseOrder(po);
+            item.setProductId(itemRequest.getProductId());
+            item.setQuantity(itemRequest.getQuantity());
+            item.setPurchasePrice(itemRequest.getPurchasePrice());
+            po.getItems().add(item);
         }
 
         po.setStatus(PurchaseOrderStatus.SUBMITTED);
         po.setSubmittedAt(LocalDateTime.now());
         purchaseOrderRepository.save(po);
-        logger.info("Purchase order id={} submitted successfully", po.getId());
 
+        // Generiši PDF i snimi ga
         byte[] pdfBytes = generatePurchaseOrderPdfBytes(po);
-        logger.info("Generated PDF for purchase order id={}", po.getId());
+        savePurchaseOrderPdf(po);
 
-        return "Purchase order submitted successfully";
+        // Vrati supplier email i PDF bytes kao response
+        String supplierEmail = po.getSupplier().getContacts().isEmpty()
+                ? ""
+                : po.getSupplier().getContacts().get(0).getEmail();
+
+        logger.info("Purchase order id={} submitted successfully", po.getId());
+        return new PurchaseOrderSubmitResponse(po.getId(), supplierEmail, pdfBytes);
     }
 
     @Override
@@ -340,6 +331,31 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         } catch (Exception e) {
             logger.error("Error generating PDF for purchase order id={}: {}", po.getId(), e.getMessage());
             throw new RuntimeException("Error generating PDF", e);
+        }
+    }
+
+    public void savePurchaseOrderPdf(PurchaseOrder po) {
+        byte[] pdfBytes = generatePurchaseOrderPdfBytes(po);
+
+        // Root folder projekta (ERP) – relativno od trenutnog working dir
+        Path projectRoot = Paths.get("").toAbsolutePath();
+        Path pdfFolder = projectRoot.resolve("pdfs");
+
+        try {
+            if (!Files.exists(pdfFolder)) {
+                Files.createDirectories(pdfFolder);
+                logger.info("Created folder for PDFs at {}", pdfFolder.toAbsolutePath());
+            }
+
+            String fileName = "purchase_order_" + po.getId() + ".pdf";
+            Path outputPath = pdfFolder.resolve(fileName);
+
+            Files.write(outputPath, pdfBytes);
+            logger.info("Purchase order PDF saved at {}", outputPath.toAbsolutePath());
+
+        } catch (IOException e) {
+            logger.error("Failed to save PDF for purchase order id={}: {}", po.getId(), e.getMessage());
+            throw new RuntimeException("Failed to save PDF", e);
         }
     }
 
