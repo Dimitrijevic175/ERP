@@ -32,10 +32,20 @@ jobs:
           fi
 
       # --- TESTOVI ---
+      - name: Make mvnw executable - procurement-service
+        run: |
+          cd procurement-service
+          chmod +x ./mvnw
+
       - name: Run tests - procurement-service
         run: |
           cd procurement-service
           ./mvnw test
+
+      - name: Make mvnw executable - sales-service
+        run: |
+          cd sales-service
+          chmod +x ./mvnw
 
       - name: Run tests - sales-service
         run: |
