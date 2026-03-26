@@ -31,6 +31,27 @@ jobs:
             echo "TAG=dev" >> $GITHUB_ENV
           fi
 
+      # --- TESTOVI ---
+      - name: Make mvnw executable - procurement-service
+        run: |
+          cd procurement-service
+          chmod +x ./mvnw
+
+      - name: Run tests - procurement-service
+        run: |
+          cd procurement-service
+          ./mvnw test
+
+      - name: Make mvnw executable - sales-service
+        run: |
+          cd sales-service
+          chmod +x ./mvnw
+
+      - name: Run tests - sales-service
+        run: |
+          cd sales-service
+          ./mvnw test
+
       # 4. Build & push user-service
       - name: Build and push user-service
         run: |
