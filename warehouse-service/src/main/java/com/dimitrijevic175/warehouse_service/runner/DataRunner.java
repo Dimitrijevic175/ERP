@@ -23,9 +23,6 @@ public class DataRunner implements CommandLineRunner {
     public void run(String... args) {
         if (warehouseRepository.count() > 0) return;
 
-        // =========================
-        // WAREHOUSES
-        // =========================
         Warehouse warehouse1 = new Warehouse();
         warehouse1.setName("Glavni Magacin Beograd");
         warehouse1.setLocation("Bulevar Kralja Aleksandra 100");
@@ -41,9 +38,6 @@ public class DataRunner implements CommandLineRunner {
         warehouse3.setLocation("Industrijska 5, Kragujevac");
         warehouseRepository.save(warehouse3);
 
-        // =========================
-        // WAREHOUSE STOCK - po 10 proizvoda po magacinu
-        // =========================
         List<WarehouseStock> allStock = new ArrayList<>();
 
         for (long productId = 1; productId <= 10; productId++) {
@@ -68,9 +62,6 @@ public class DataRunner implements CommandLineRunner {
 
         stockRepository.saveAll(allStock);
 
-        // =========================
-        // RECEIPT NOTES - povezuju se sa stvarnim PurchaseOrder ID-jevima
-        // =========================
         long[] poIds = {1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L, 12L};
 
         for (int i = 0; i < poIds.length; i++) {
@@ -93,9 +84,6 @@ public class DataRunner implements CommandLineRunner {
             receiptNoteRepository.save(rn);
         }
 
-        // =========================
-        // DISPATCH NOTES - demo sa random proizvodima
-        // =========================
         for (long soId = 201; soId <= 212; soId++) { // salesOrder IDs iz sales_service
             DispatchNote dn = new DispatchNote();
             dn.setSalesOrderId(soId);
