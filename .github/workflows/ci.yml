@@ -81,3 +81,23 @@ jobs:
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/warehouse-service:${{ env.TAG }} ./warehouse-service
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/warehouse-service:${{ env.TAG }}
+
+  deploy:
+        needs: build  # Čeka da se build uspešno završi
+        runs-on: ubuntu-latest
+        if: github.ref == 'refs/heads/main'
+        steps:
+          - name: Deploy to Azure VM via SSH
+            uses: appleboy/ssh-action@v1.0.3
+            with:
+              host: ${{ secrets.AZURE_VM_IP }}
+              username: ${{ secrets.AZURE_VM_USER }}
+              key: ${{ secrets.SSH_PRIVATE_KEY }}
+              script: |
+                cd ~/erp-sistem
+                # Povlačenje novih verzija imidža
+                docker compose pull
+                # Restartovanje servisa sa novim imidžima
+                docker compose up -d
+                # Brisanje starih ("dangling") imidža da ne zauzimaju prostor
+                docker image prune -f
