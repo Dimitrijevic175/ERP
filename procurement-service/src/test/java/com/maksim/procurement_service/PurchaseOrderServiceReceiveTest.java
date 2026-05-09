@@ -57,7 +57,7 @@ class PurchaseOrderServiceReceiveTest {
 
     @Test
     void receivePurchaseOrder_wrongStatus_throwsException() {
-        po.setStatus(PurchaseOrderStatus.CONFIRMED); // nije CONFIRMED
+        po.setStatus(PurchaseOrderStatus.DRAFT); // nije CONFIRMED
         when(purchaseOrderRepository.findById(1L)).thenReturn(Optional.of(po));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> sut.receivePurchaseOrder(1L));
